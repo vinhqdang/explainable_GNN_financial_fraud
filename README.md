@@ -1,6 +1,6 @@
 # RTXGNN: Real-Time eXplainable Graph Neural Network for Financial Fraud Detection
 
-A self-explainable temporal GNN architecture with regulatory-compliant explanations, targeting the [Applied Computing and Informatics (ACI)](https://www.emeraldgrouppublishing.com/journal/aci) journal.
+A self-explainable temporal GNN architecture with regulatory-compliant explanations.
 
 ## Overview
 
