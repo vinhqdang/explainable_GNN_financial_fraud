@@ -1340,7 +1340,7 @@ ASYNC EXPLANATION WORKER:
 - [ ] Benchmark on public datasets (YelpChi, Amazon, Elliptic)
 - [ ] Conduct human evaluation study
 - [ ] Ablation studies
-- [ ] Write paper targeting ACI
+- [ ] Write paper
 
 ---
 
@@ -1352,4 +1352,3 @@ ASYNC EXPLANATION WORKER:
 
 *Document Version: 1.0*
 *Last Updated: November 2024*
-*Target Venue: Emerald Applied Computing and Informatics (ACI)*
