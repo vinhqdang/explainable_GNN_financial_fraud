@@ -50,7 +50,7 @@ Given the labelled nodes observed up to a cut-off time, the task is to estimate 
 \subsection{Hierarchical Recency-Aware Positional Encoding (HRAPE)}
 \label{subsec:hrape}
 
-HRAPE supplies three kinds of temporal information to SEAL. It depends only on time \emph{differences} and on counts in trailing windows, never on the absolute timestamp, so a model evaluated on future time steps never sees an out-of-range time value. Section~\ref{subsec:ablation} shows that additionally encoding the absolute timestamp reduces test performance under the temporal split.
+HRAPE supplies three kinds of temporal information to SEAL. It depends only on time \emph{differences} and on counts in trailing windows, never on the absolute timestamp, so a model evaluated on future time steps never sees an out-of-range time value. In our ablation (Section~\ref{subsec:ablation}), additionally encoding the absolute timestamp lowers the mean test F1 and makes it markedly less stable across seeds.
 
 \paragraph{Multi-scale gap encoding} For a set of periods $P_1,\dots,P_S$ (in the time unit of the data) the gap of an edge is encoded as
 \begin{equation}

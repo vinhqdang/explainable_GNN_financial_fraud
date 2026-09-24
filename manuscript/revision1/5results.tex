@@ -195,24 +195,28 @@ The temporal mechanism helps where timing matters. In the default setting, RTXGN
 
 \begin{table}[!t]
 \centering
-\caption{End-to-end latency per request of $B$ transactions on CPU (\cpuName), in milliseconds: percentiles of the total and mean time of each stage (sample: 2-hop neighbourhood sampling with fan-out 25 and subgraph construction; forward: model; explain: reading top-5 features and top-3 edges from the masks, or running GNNExplainer for 100 iterations). tx/s: throughput. Peak resident memory of the process, including the in-memory graph: \peakRss{} MB.}
+\caption{End-to-end latency per request of $B$ transactions on CPU (\cpuName), in milliseconds: percentiles of the total and mean time of each stage (one thread; sample: 2-hop neighbourhood sampling with fan-out 25 and subgraph construction; forward: model; explain: reading top-5 features and top-3 edges from the masks, or running GNNExplainer for 100 iterations). tx/s: throughput. MLP and GCN are timed with untrained weights, which does not affect their latency. Peak resident memory of the process, including the in-memory graph: \peakRss{} MB.}
 \label{tab:latency}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
 \input{tables/latency.tex}
 \end{table}
 
-\LATTEXT
+Table~\ref{tab:latency} reports the end-to-end latency of scoring requests on one CPU core. A request samples the 2-hop neighbourhood of its transactions, builds the subgraph, runs the model and returns the explanation. For a single transaction, RTXGNN needs \rtxLatBoneMed{} ms at the median and \rtxLatBoneP{} ms at the 99th percentile. Of this, \rtxLatBoneSmp{} ms is neighbourhood sampling, \rtxLatBoneFwd{} ms the forward pass and \rtxLatBoneExp{} ms the extraction of the explanation from the masks. The explanation therefore adds less than a millisecond. Producing the explanation with GNNExplainer instead raises the median latency to \rtxgnnexLatBoneMed{} ms and the 99th percentile to \rtxgnnexLatBoneP{} ms, two orders of magnitude more. For batches of 256 transactions, a single core scores and explains \rtxLatBtwofiftysixTps{} transactions per second (\rtxLatBtwofiftysixMed{} ms per batch at the median). RTXGNN is slower than the plain GNNs (GAT: \gatLatBoneMed{} ms for one transaction) because of its mask generators and its wider messages, but it stays far below the 10--100\,ms budgets of online screening. Using four threads changes the single-transaction latency very little (\rtxLatTfourBoneMed{} ms at the median), because the computation is too small to parallelise, and improves the throughput for large batches (\rtxLatTfourBtwofiftysixTps{} transactions per second). The peak resident memory of the serving process, including the complete in-memory test graph, was \peakRss{} MB.
+
+These figures do not include the retrieval of the neighbourhood from a production data store, which we emulate with an in-memory CSR graph, or network overhead. They are therefore lower bounds for a deployed system. They are also not directly comparable with the 0.4\,ms per transaction reported for SEFraud \citep{li2024sefraud}, which refers to GPU inference amortised over large batches. Under our protocol, SEFraud (\sefLatBoneMed{} ms for one transaction) is somewhat faster than RTXGNN, since it has no node masks and no temporal encoding.
 
 \subsection{Case studies}
 \label{subsec:cases}
 
 \begin{table}[!t]
 \centering
-\caption{Explanations of four Elliptic test transactions by RTXGNN (seed 0). Feature groups: L = local, A = aggregated (the only semantics documented for the anonymised features). Score in parentheses: after removing the top-5 features.}
+\caption{Explanations of four Elliptic test transactions by RTXGNN (seed 0). Open features: number of features with mask value above 0.5 (in parentheses: local ones). The first five open features are listed in the order of the mask generator's pre-sigmoid score; groups: L = local, A = aggregated (the only semantics documented for the anonymised features). Score in parentheses: after removing these five features. Neighbours: the most important incoming and outgoing transactions (edge importance $I_{uv}$) with their labels.}
 \label{tab:cases}
 \footnotesize
 \input{tables/case_studies.tex}
 \end{table}
 
-\CASETEXT
+Table~\ref{tab:cases} shows the explanations of four test transactions: two correctly detected illicit transactions and one correctly classified licit transaction from step 42, and one illicit transaction from step 44 that RTXGNN misses. Because Elliptic's features are anonymised, we report feature indices together with their documented group (local or aggregated) and do not attach any further meaning to them.
+
+Three observations follow from these cases and from the statistics of the masks over all test transactions. First, the feature mask is nearly binary. For a typical test transaction, about 30\% of the features are fully open (gate $>0.99$), about 30\% fully closed ($<0.01$), and 75--82 features are open in the four cases, roughly half of them local. The mask therefore acts as a per-transaction feature selection rather than as a fine-grained ranking. The ordering within the open set in Table~\ref{tab:cases} is by the mask generator's pre-sigmoid score. Second, the leading features are largely shared across transactions, i.e.\ the selection is mostly global. Third, removing the first five open features changes the scores by at most 0.005, in line with the low necessity found in Section~\ref{subsec:explanations}. The missed transaction after step 43 receives a confident licit score, and its explanation offers no warning sign. This illustrates that explanations do not help with new patterns that the model has never seen. For decision support, the most useful elements are thus (i) the retained feature set, which documents which inputs could have influenced the score, (ii) the neighbouring transactions with non-negligible importance, which point the analyst to related cases, and (iii) the score itself, used to rank the review queue.

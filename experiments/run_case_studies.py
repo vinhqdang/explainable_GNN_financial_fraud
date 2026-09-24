@@ -54,24 +54,30 @@ if __name__ == "__main__":
         x[pos[0], idx] = 0
         with torch.no_grad():
             p_rm = float(torch.sigmoid(model(sub, x=x)["logit"][pos[0]]))
-        orig = dev.orig_id
         lab = {1: "illicit", 0: "licit", -1: "unlabelled"}
         nb = []
-        for u, et, w in rec["edges"]:
-            j = int((orig == u).nonzero()[0]) if (orig == u).any() else None
-            nb.append(dict(tx=u, direction="incoming" if et == 0 else "outgoing", importance=w,
-                           label=lab[int(dev.y[j])] if j is not None else "?", score=float(p[j]) if j is not None else None))
-        cases.append(dict(kind=kind, tx=rec["tx"], step=int(dev.t[v]), label=lab[int(y[v])], score=rec["score"],
+        for u, et, w in rec["edges"]:  # u is an index into dev (sub.orig_id holds dev indices)
+            nb.append(dict(tx=int(dev.orig_id[u]), direction="incoming" if et == 0 else "outgoing", importance=w,
+                           label=lab[int(dev.y[u])], score=float(p[u])))
+        fm = out["feat"][pos[0]]
+        sat = float((fm > 0.99).float().mean())
+        with torch.no_grad():
+            logit_f = (model.g_feat(sub.x[pos[0]:pos[0] + 1]) + 2.0)[0]
+        open_ = torch.nonzero(fm > 0.5).squeeze(-1)
+        order = open_[torch.argsort(logit_f[open_], descending=True)]
+        rec["features"] = [(int(f), float(fm[f])) for f in order[:5]]
+        n_open, n_open_local = int(len(open_)), int((open_ < 93).sum())
+        cases.append(dict(kind=kind, tx=int(dev.orig_id[v]), mask_saturated_frac=sat, n_open=n_open, n_open_local=n_open_local, step=int(dev.t[v]), label=lab[int(y[v])], score=rec["score"],
                           threshold=thr, features=[(f, group(f), m) for f, m in rec["features"]],
                           score_without_top5=p_rm, neighbours=nb, degree=int(deg[v])))
     json.dump(cases, open(os.path.join(RESULTS, "case_studies.json"), "w"), indent=1)
-    lines = ["\\begin{tabular}{p{2.3cm}p{1.2cm}p{4.6cm}p{4.4cm}}", "\\toprule",
-             "Case & score (w/o top-5) & top-5 features: index (group) mask & top neighbours: direction, label, importance\\\\",
+    lines = ["\\begin{tabular}{p{2.2cm}p{1.3cm}p{1.5cm}p{3.6cm}p{4.0cm}}", "\\toprule",
+             "Case & score (w/o top-5) & open features (local) & first five open features: index (group) & top neighbours: direction, label, importance\\\\",
              "\\midrule"]
     for c in cases:
-        feats = "; ".join(f"{f} ({'L' if g == 'local' else 'A'}) {m:.2f}" for f, g, m in c["features"])
+        feats = ", ".join(f"{f} ({'L' if g == 'local' else 'A'})" for f, g, m in c["features"])
         nbs = "; ".join(f"{n['direction'][:3]}., {n['label']}, {n['importance']:.2f}" for n in c["neighbours"]) or "--"
-        lines.append(f"{c['kind']}, step {c['step']} & {c['score']:.2f} ({c['score_without_top5']:.2f}) & {feats} & {nbs}\\\\")
+        lines.append(f"{c['kind']}, step {c['step']} & {c['score']:.2f} ({c['score_without_top5']:.2f}) & {c['n_open']} ({c['n_open_local']}) & {feats} & {nbs}\\\\")
     lines += ["\\bottomrule", "\\end{tabular}"]
     open(os.path.join(OUT, "case_studies.tex"), "w").write("\n".join(lines) + "\n")
     print(json.dumps(cases, indent=1)[:3000])

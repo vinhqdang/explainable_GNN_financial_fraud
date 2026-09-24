@@ -467,12 +467,10 @@ def latency_table():
     rows = load("latency.jsonl")
     if not rows:
         return
-    lines = ["\\begin{tabular}{lrrrrrrrrr}", "\\toprule",
-             "Model & threads & $B$ & p50 & p95 & p99 & sample & forward & explain & tx/s\\\\", "\\midrule"]
-    for r in sorted(rows, key=lambda r: (r["threads"], r["model"], r["batch"])):
-        nm = NAMES.get(r["model"].split("+")[0], r["model"]) + (" + GNNExplainer" if "+" in r["model"] else "")
-        lines.append(f"{nm} & {r['threads']} & {r['batch']} & {r['p50']:.1f} & {r['p95']:.1f} & {r['p99']:.1f} & "
-                     f"{r['sample_ms']:.1f} & {r['forward_ms']:.1f} & {r['explain_ms']:.1f} & {r['throughput_tps']:,.0f}\\\\")
+    lines = ["\\begin{tabular}{lrrrrrrrr}", "\\toprule",
+             "Model & $B$ & p50 & p95 & p99 & sample & forward & explain & tx/s\\\\", "\\midrule"]
+    order = ["mlp", "gcn", "gat", "gat+gnnexplainer", "sefraud", "rtxgnn", "rtxgnn+gnnexplainer"]
+    for r in sorted(rows, key=lambda r: (r["threads"], order.index(r["model"]), r["batch"])):
         words = {1: "one", 4: "four", 32: "thirtytwo", 256: "twofiftysix", 2: "two"}
         mname = {"rtxgnn": "rtx", "gat": "gat", "gcn": "gcn", "mlp": "mlp", "sefraud": "sef",
                  "rtxgnn+gnnexplainer": "rtxgnnex", "gat+gnnexplainer": "gatgnnex"}[r["model"]]
@@ -480,6 +478,11 @@ def latency_table():
         macro(tag + "P", f"{r['p99']:.1f}"); macro(tag + "Med", f"{r['p50']:.1f}"); macro(tag + "Pnf", f"{r['p95']:.1f}")
         macro(tag + "Fwd", f"{r['forward_ms']:.1f}"); macro(tag + "Smp", f"{r['sample_ms']:.1f}")
         macro(tag + "Exp", f"{r['explain_ms']:.2f}"); macro(tag + "Tps", f"{r['throughput_tps']:,.0f}")
+        if r["threads"] != 1:
+            continue
+        nm = NAMES.get(r["model"].split("+")[0], r["model"]) + (" + GNNExplainer" if "+" in r["model"] else "")
+        lines.append(f"{nm} & {r['batch']} & {r['p50']:.1f} & {r['p95']:.1f} & {r['p99']:.1f} & "
+                     f"{r['sample_ms']:.1f} & {r['forward_ms']:.1f} & {r['explain_ms']:.1f} & {r['throughput_tps']:,.0f}\\\\")
     lines += ["\\bottomrule", "\\end{tabular}"]
     open(os.path.join(OUT, "latency.tex"), "w").write("\n".join(lines) + "\n")
     macro("cpuName", rows[0]["cpu"].replace("(R)", "").replace("(TM)", ""))

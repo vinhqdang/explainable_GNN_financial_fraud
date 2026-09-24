@@ -1,0 +1,226 @@
+[
+ {
+  "kind": "true positive",
+  "tx": 170837,
+  "mask_saturated_frac": 0.38787877559661865,
+  "n_open": 82,
+  "n_open_local": 44,
+  "step": 42,
+  "label": "illicit",
+  "score": 0.9994158744812012,
+  "threshold": 0.816312313079834,
+  "features": [
+   [
+    162,
+    "aggregated",
+    1.0
+   ],
+   [
+    28,
+    "local",
+    1.0
+   ],
+   [
+    160,
+    "aggregated",
+    1.0
+   ],
+   [
+    89,
+    "local",
+    1.0
+   ],
+   [
+    84,
+    "local",
+    1.0
+   ]
+  ],
+  "score_without_top5": 0.9944199919700623,
+  "neighbours": [
+   {
+    "tx": 167102,
+    "direction": "outgoing",
+    "importance": 0.0009687351412139833,
+    "label": "unlabelled",
+    "score": 0.3043755292892456
+   },
+   {
+    "tx": 169452,
+    "direction": "incoming",
+    "importance": 2.6939901698330715e-11,
+    "label": "licit",
+    "score": 0.0017808566335588694
+   }
+  ],
+  "degree": 2
+ },
+ {
+  "kind": "true positive",
+  "tx": 167298,
+  "mask_saturated_frac": 0.4000000059604645,
+  "n_open": 79,
+  "n_open_local": 41,
+  "step": 42,
+  "label": "illicit",
+  "score": 0.9999977350234985,
+  "threshold": 0.816312313079834,
+  "features": [
+   [
+    28,
+    "local",
+    1.0
+   ],
+   [
+    162,
+    "aggregated",
+    1.0
+   ],
+   [
+    160,
+    "aggregated",
+    1.0
+   ],
+   [
+    89,
+    "local",
+    1.0
+   ],
+   [
+    84,
+    "local",
+    1.0
+   ]
+  ],
+  "score_without_top5": 0.9999895095825195,
+  "neighbours": [
+   {
+    "tx": 167299,
+    "direction": "outgoing",
+    "importance": 0.2328454852104187,
+    "label": "unlabelled",
+    "score": 0.9997193217277527
+   },
+   {
+    "tx": 169348,
+    "direction": "incoming",
+    "importance": 0.02089386060833931,
+    "label": "illicit",
+    "score": 0.9997455477714539
+   }
+  ],
+  "degree": 2
+ },
+ {
+  "kind": "true negative",
+  "tx": 168573,
+  "mask_saturated_frac": 0.30909091234207153,
+  "n_open": 75,
+  "n_open_local": 41,
+  "step": 42,
+  "label": "licit",
+  "score": 0.01308602374047041,
+  "threshold": 0.816312313079834,
+  "features": [
+   [
+    162,
+    "aggregated",
+    1.0
+   ],
+   [
+    160,
+    "aggregated",
+    0.9999998807907104
+   ],
+   [
+    88,
+    "local",
+    0.9999995231628418
+   ],
+   [
+    28,
+    "local",
+    0.9999992847442627
+   ],
+   [
+    120,
+    "aggregated",
+    0.9999983310699463
+   ]
+  ],
+  "score_without_top5": 0.019157463684678078,
+  "neighbours": [
+   {
+    "tx": 168574,
+    "direction": "outgoing",
+    "importance": 1.4641733159237447e-08,
+    "label": "unlabelled",
+    "score": 0.6453068256378174
+   },
+   {
+    "tx": 169436,
+    "direction": "outgoing",
+    "importance": 8.246341668157852e-16,
+    "label": "unlabelled",
+    "score": 0.01237824559211731
+   },
+   {
+    "tx": 172173,
+    "direction": "incoming",
+    "importance": 2.5212981231318517e-16,
+    "label": "licit",
+    "score": 0.001611989689990878
+   }
+  ],
+  "degree": 3
+ },
+ {
+  "kind": "false negative (after step 43)",
+  "tx": 183529,
+  "mask_saturated_frac": 0.28484848141670227,
+  "n_open": 77,
+  "n_open_local": 44,
+  "step": 44,
+  "label": "illicit",
+  "score": 0.0054619889706373215,
+  "threshold": 0.816312313079834,
+  "features": [
+   [
+    120,
+    "aggregated",
+    1.0
+   ],
+   [
+    141,
+    "aggregated",
+    1.0
+   ],
+   [
+    160,
+    "aggregated",
+    1.0
+   ],
+   [
+    88,
+    "local",
+    0.9999998807907104
+   ],
+   [
+    28,
+    "local",
+    0.9999997615814209
+   ]
+  ],
+  "score_without_top5": 0.007901047356426716,
+  "neighbours": [
+   {
+    "tx": 182966,
+    "direction": "outgoing",
+    "importance": 1.0220140705952119e-10,
+    "label": "unlabelled",
+    "score": 0.1464560478925705
+   }
+  ],
+  "degree": 1
+ }
+]
