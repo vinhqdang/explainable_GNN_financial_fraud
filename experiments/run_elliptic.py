@@ -83,6 +83,7 @@ if __name__ == "__main__":
     ap.add_argument("--seeds", default="0-9")
     ap.add_argument("--tag", default="main")
     ap.add_argument("--threads", type=int, default=4)
+    ap.add_argument("--skip", default="", help="comma-separated result files whose (model, seed) runs count as done")
     ap.add_argument("--raw", action="store_true", help="neural models use the raw (not quantile-normalised) features")
     a = ap.parse_args()
     torch.set_num_threads(a.threads)
@@ -94,6 +95,8 @@ if __name__ == "__main__":
     dtr, dev = to_dev(dtr), to_dev(dev)
     np.save(os.path.join(RESULTS, "elliptic_eval_ids.npy"), dev.orig_id.cpu().numpy())
     done = done_keys(out)
+    for extra in filter(None, a.skip.split(",")):
+        done |= done_keys(os.path.join(RESULTS, extra))
     run_one.no_ckpt = a.raw
     for seed in parse_seeds(a.seeds):
         for name in a.models.split(","):

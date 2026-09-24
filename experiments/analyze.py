@@ -68,8 +68,16 @@ def paired(a, b, metric):
     return x, y
 
 
-def main_table():
+def main_rows():
+    evo = load("elliptic_evo.jsonl")
     rows = load("elliptic_main.jsonl")
+    if evo:
+        rows = [r for r in rows if r["model"] != "evolvegcn"] + evo
+    return rows
+
+
+def main_table():
+    rows = main_rows()
     if not rows:
         return
     R = by_model(rows)
@@ -138,7 +146,7 @@ def main_table():
 
 
 ABL = [("full", "RTXGNN (full)"), ("no_hrape", "without HRAPE"), ("time2vec", "HRAPE $\\rightarrow$ Time2Vec (gaps)"),
-       ("hrape_abs", "HRAPE + absolute time (first version)"), ("time2vec_abs", "Time2Vec on absolute time"),
+       ("hrape_abs", "HRAPE + absolute-time encoding"), ("time2vec_abs", "Time2Vec on absolute time"),
        ("no_seal", "without SEAL masks (plain attention)"), ("no_sparsity", "without $\\mathcal{L}_{sp}$"),
        ("no_fidelity", "without $\\mathcal{L}_{suf}$ and $\\mathcal{L}_{nec}$"), ("no_suf", "without $\\mathcal{L}_{suf}$"),
        ("no_nec", "without $\\mathcal{L}_{nec}$"), ("no_curriculum", "without curriculum"),
@@ -152,50 +160,67 @@ REG = [("full", "masks + $\\mathcal{L}_{sp}$ ($\\lambda_{sp}=0.05$), dropout 0.2
 SENS = [("dim32", "$D=32$"), ("full", "$D=64$ (default)"), ("dim128", "$D=128$"), ("layers1", "$L=1$ layer")]
 
 
-def variant_rows():
-    rows = load("elliptic_ablation.jsonl")
-    main = [r for r in load("elliptic_main.jsonl") if r["model"] == "rtxgnn"]
+def variant_rows(source):
     R = defaultdict(dict)
-    for r in rows:
-        R[r["model"].split(":", 1)[1] if ":" in r["model"] else "full"][r["seed"]] = r
-    for r in main:
-        R["full"][r["seed"]] = r
+    if source == "cpu":
+        for r in load("elliptic_ablation.jsonl"):
+            R[r["model"].split(":", 1)[1]][r["seed"]] = r
+        for r in load("elliptic_main.jsonl"):
+            if r["model"] == "rtxgnn" and r["seed"] < 5:
+                R["full"][r["seed"]] = r
+    else:
+        for r in load("elliptic_ablation2.jsonl"):
+            R[r["model"].split(":", 1)[1]][r["seed"]] = r
     return R
 
 
-def variant_table(spec, fname, prefix):
-    R = variant_rows()
-    if len(R) <= 1:
-        return
-    ref = R["full"]
-    lines = ["\\begin{tabular}{lcccc}", "\\toprule",
-             "Variant & seeds & F1 & AP & $\\Delta$F1 (paired $p$)\\\\", "\\midrule"]
+def variant_block(R, spec, prefix, lines):
+    ref = R.get("full", {})
     for key, label in spec:
-        if key not in R:
+        if key not in R or not R[key]:
             continue
         seeds = sorted(R[key])
         f1 = [R[key][s]["test"]["f1"] for s in seeds]; ap = [R[key][s]["test"]["ap"] for s in seeds]
         if key == "full":
-            seeds_ref = [s for s in seeds if s < 5]
-            f1 = [R[key][s]["test"]["f1"] for s in seeds_ref]; ap = [R[key][s]["test"]["ap"] for s in seeds_ref]
-            lines.append(f"{label} & {len(seeds_ref)} & {ms(f1)} & {ms(ap)} & --\\\\")
+            lines.append(f"{label} & {len(seeds)} & {ms(f1)} & {ms(ap)} & --\\\\")
+            macro(f"{prefix}fullFone", f"{np.mean(f1):.3f}")
             continue
         common = [s for s in seeds if s in ref]
         x = np.array([R[key][s]["test"]["f1"] for s in common]); y = np.array([ref[s]["test"]["f1"] for s in common])
         pval = ttest_rel(x, y).pvalue if len(common) >= 3 else float("nan")
-        delta = (x - y).mean()
+        delta = (x - y).mean() if len(common) else float("nan")
         lines.append(f"{label} & {len(seeds)} & {ms(f1)} & {ms(ap)} & {delta:+.3f} ({pval:.2f})\\\\")
-        macro(f"{prefix}{key.replace('_', '')}Delta", f"{delta:+.3f}")
-        macro(f"{prefix}{key.replace('_', '')}Fone", f"{np.mean(f1):.3f}")
-        macro(f"{prefix}{key.replace('_', '')}AP", f"{np.mean(ap):.3f}")
-        macro(f"{prefix}{key.replace('_', '')}P", f"{pval:.2f}")
+        k = key.replace("_", "")
+        macro(f"{prefix}{k}Delta", f"{delta:+.3f}"); macro(f"{prefix}{k}Fone", f"{np.mean(f1):.3f}")
+        macro(f"{prefix}{k}AP", f"{np.mean(ap):.3f}"); macro(f"{prefix}{k}P", f"{pval:.2f}")
+
+
+HEAD = ["\\begin{tabular}{lcccc}", "\\toprule", "Variant & seeds & F1 & AP & $\\Delta$F1 (paired $p$)\\\\", "\\midrule"]
+
+
+def variant_table(spec, fname, prefix):
+    """spec entries of the primary study (CPU, 5 seeds) are followed by the
+    secondary variants (GPU, 3 seeds), each compared with the full model
+    trained in the same setting."""
+    cpu, gpu = variant_rows("cpu"), variant_rows("gpu")
+    lines = list(HEAD)
+    prim = [(k, l) for k, l in spec if k in cpu]
+    sec = [(k, l) for k, l in spec if k in gpu and (k not in cpu or k == "full")]
+    if len(prim) > 1:
+        lines.append("\\multicolumn{5}{l}{\\textit{Primary study (5 seeds)}}\\\\")
+        variant_block(cpu, prim, prefix, lines)
+    if len(sec) > 1:
+        lines.append("\\midrule\\multicolumn{5}{l}{\\textit{Secondary study (3 seeds, trained on GPU; own reference)}}\\\\")
+        variant_block(gpu, sec, prefix + "G", lines)
+    if len(lines) == len(HEAD):
+        return
     lines += ["\\bottomrule", "\\end{tabular}"]
     open(os.path.join(OUT, fname), "w").write("\n".join(lines) + "\n")
 
 
 def operational():
     """Alert counts at the validation threshold and precision at fixed alert budgets."""
-    rows = load("elliptic_main.jsonl")
+    rows = main_rows()
     ids_p = os.path.join(RESULTS, "elliptic_eval_ids.npy")
     if not rows or not os.path.exists(ids_p):
         return
@@ -238,7 +263,7 @@ def operational():
 
 
 def temporal_table():
-    rows = load("elliptic_main.jsonl")
+    rows = main_rows()
     ret = load("retraining.jsonl")
     if not rows:
         return
