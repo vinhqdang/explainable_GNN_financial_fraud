@@ -1,0 +1,19 @@
+\begin{tabular}{lccccc}
+\toprule
+Model & F1 & Precision & Recall & AUC & AP\\
+\midrule
+\multicolumn{6}{l}{\textit{Feature-only models}}\\
+Logistic regression & 0.325 & 0.203 & \textbf{0.817} & 0.861 & 0.218\\
+Random forest & 0.742\,$\pm$\,0.081 & 0.784\,$\pm$\,0.192 & 0.716\,$\pm$\,0.013 & 0.904\,$\pm$\,0.002 & 0.770\,$\pm$\,0.000\\
+XGBoost & \textbf{0.782\,$\pm$\,0.011} & \textbf{0.839\,$\pm$\,0.032} & 0.732\,$\pm$\,0.005 & \textbf{0.919\,$\pm$\,0.005} & \textbf{0.791\,$\pm$\,0.004}\\
+MLP & 0.573\,$\pm$\,0.074 & 0.478\,$\pm$\,0.108 & 0.729\,$\pm$\,0.016 & 0.904\,$\pm$\,0.014 & 0.745\,$\pm$\,0.001\\
+\multicolumn{6}{l}{\textit{General GNNs}}\\
+GCN & 0.687\,$\pm$\,0.007 & 0.713\,$\pm$\,0.031 & 0.663\,$\pm$\,0.014 & 0.902\,$\pm$\,0.015 & 0.723\,$\pm$\,0.003\\
+GraphSAGE & 0.719\,$\pm$\,0.012 & 0.716\,$\pm$\,0.013 & 0.723\,$\pm$\,0.011 & 0.914\,$\pm$\,0.004 & 0.774\,$\pm$\,0.012\\
+GAT & 0.721 & 0.737 & 0.705 & 0.893 & 0.748\\
+\multicolumn{6}{l}{\textit{Temporal GNNs}}\\
+EvolveGCN-O & 0.022 & 0.022 & 0.023 & 0.358 & 0.046\\
+\multicolumn{6}{l}{\textit{Fraud-specific GNNs}}\\
+\multicolumn{6}{l}{\textit{Proposed}}\\
+\bottomrule
+\end{tabular}

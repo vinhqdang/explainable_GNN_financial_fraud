@@ -1,0 +1,41 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{What the detection results mean for decision making}
+\label{subsec:disc_decision}
+
+The results do not support the claim of the first version that RTXGNN is "state of the art" on Elliptic, and we have withdrawn it. With corrected preprocessing and a common protocol, several GNNs and both tree ensembles reach similar F1 scores. The differences between the best of them are of the same order as the variation across seeds. An F1 of about 0.7 means, at the validation-chosen threshold, that roughly a quarter of the illicit test transactions are missed and that a similar share of alerts are false (Section~\ref{subsec:operational}). No financial institution would run such a model as an autonomous decision maker. The realistic use is as a prioritisation tool in a human review queue, where the operating point is set by the capacity of the investigation team (Table~\ref{tab:operational}) and the model is combined with rules and other controls. In this role, three properties matter beyond F1: ranking quality at the top of the list (AP), the effort needed to review an alert, and robustness over time. The contribution of RTXGNN is mainly the second one. It provides a faithful attribution with every score at no additional inference cost, while its detection performance is on par with the strongest GNNs.
+
+\subsection{Explanations, regulation and how masks could be operationalised}
+\label{subsec:regulatory}
+
+The first version stated that RTXGNN's masks "satisfy" GDPR Article~22 and the ECOA. We withdraw this claim. The regulations cited in Section~\ref{sec:related} impose obligations on institutions and processes: lawful basis and human involvement for automated decisions, notices with specific reasons, documented and validated models, and auditable AML decisions. No model architecture can satisfy these obligations by itself. Several of them also do not concern the Elliptic setting at all. The ECOA, for instance, governs consumer credit decisions, not the screening of cryptocurrency transactions. A ranking of anonymous feature indices, as produced on Elliptic, is not a meaningful explanation for a data subject, an analyst or a regulator.
+
+The masks can nevertheless support such processes when the institution controls the feature definitions. We see four concrete requirements.
+\begin{enumerate}
+\item \textbf{A governed feature dictionary.} Every model input needs a documented, business-level definition, for example "number of distinct counterparties in the last 7 days". Features derived from the graph also need a description of how they are computed. Top-$k$ feature attributions can then be translated into candidate reason statements. This is impossible on Elliptic, whose features are anonymised, and is the main reason we only report feature \emph{groups} (local versus aggregated) in the case studies.
+\item \textbf{Reason codes curated by experts.} Attributions indicate which inputs the score depended on and in which direction the prediction moves when they are removed. They do not justify the decision. A curated mapping from (groups of) features to reason codes, reviewed by compliance officers, and a rule for which reasons are reported (for example the top reasons that push the score towards "illicit") are needed before any attribution reaches a customer notice or a suspicious-activity report.
+\item \textbf{Human review and audit trail.} The score, the threshold version, the model version, and the feature and edge attributions of every alert can be logged at no extra cost, because they are produced by the forward pass that produced the score. Such a log supports the documentation expected in AML investigations and in model-risk management \citep{sr117}. The final decision remains with the analyst.
+\item \textbf{Validation of the explanations themselves.} Before explanations are used in any customer-facing or supervisory context, their faithfulness (Section~\ref{subsec:explanations}), their stability across retraining, and their usefulness to analysts must be validated. We provide the first two for RTXGNN. The third requires a user study with practising analysts, which we have not conducted.
+\end{enumerate}
+Under these conditions, the masks are best regarded as evidence that can support transparency obligations. They do not demonstrate compliance with GDPR, ECOA, FATF guidance, MiCA or the EU AI Act \citep{euaiact2024}.
+
+\subsection{Mask sparsity is regularisation, not a new kind of regularisation}
+\label{subsec:disc_reg}
+
+The first version presented "explainability as regularisation" as a finding, based on a single run in which removing the sparsity term reduced F1 by 6.4 points. As Reviewer~1 notes, the sparsity term is an $L_1$ penalty on auxiliary gate activations, and a claim about its regularising effect must be tested against standard regularisers. Our controlled comparison (Section~\ref{subsec:regularisation}) does not reproduce a large effect. With 5 seeds, the differences between mask sparsity, stronger dropout and stronger weight decay are within the seed-to-seed variation. We therefore make only the weaker claim that the explanation objective does not cost detection performance. We do not claim that it improves it.
+
+\subsection{Deployment: drift, retraining and latency}
+\label{subsec:deployment}
+
+All models collapse on Elliptic after time step 43. This is not specific to graph models or to RTXGNN. \citet{weber2019anti} attribute it to the shutdown of a large dark market, after which the illicit activity in the data changes. The first version described RTXGNN as production-ready without a strategy for this situation. The retraining experiment (Section~\ref{subsec:temporal}) shows that refitting with a one-step label delay recovers part of the lost performance for both RTXGNN and the random forest. It cannot anticipate a new illicit pattern before labels for it exist. A deployment would therefore need drift monitoring on the score distribution and on the alert yield, periodic retraining with a documented schedule, and fallback rules for known typologies. Our latency measurements (Section~\ref{subsec:latency}) show that the model itself fits comfortably in an online budget on a single CPU core. In practice the budget is dominated by the retrieval of the transaction neighbourhood from the institution's data store, which we emulate with an in-memory graph. Latency in a production system will also depend on that store.
+
+\subsection{Limitations}
+\label{subsec:limitations}
+
+\begin{itemize}
+\item \textbf{Data.} Elliptic's snapshots contain no cross-snapshot edges and no intra-snapshot timestamps, so the temporal components of RTXGNN are close to inactive on it. T-Finance has no timestamps at all. The benefit of HRAPE is therefore demonstrated only on synthetic data. Validation on a real transaction dataset with continuous timestamps and repeated account activity is the most important next step.
+\item \textbf{Baselines.} All graph baselines are our re-implementations under one protocol and budget, without per-model tuning, and some were adapted from multi-relation or continuous-time settings. They may perform better with their original code and tuning.
+\item \textbf{Explanations.} Faithfulness is measured with perturbation metrics that replace features by the training mean. Such perturbations can move inputs off the data manifold. Our training objective also uses perturbations of this kind, which may favour RTXGNN on these metrics. We mitigate this by applying the post-hoc explainers to the same trained model and by reporting a random-explanation reference. No user study has been carried out.
+\item \textbf{Compute.} All experiments were run on CPU. Training cost is about three times that of the same network without the explanation objective. Scalability to graphs with billions of edges was not evaluated.
+\end{itemize}

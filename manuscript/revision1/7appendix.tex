@@ -1,0 +1,42 @@
+\appendix
+
+\section{Elliptic: class counts per time step}
+\label{app:elliptic}
+
+\begin{table}[!ht]
+\centering
+\caption{Labelled and unlabelled transactions per time step of Elliptic and the split each step belongs to.}
+\label{tab:elliptic_steps}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\input{tables/elliptic_steps.tex}
+\end{table}
+
+\section{Adaptation of the baselines}
+\label{app:baselines}
+
+All baselines use the shared protocol of Section~\ref{subsec:protocol} (hidden size 64, two layers, dropout 0.2, class-balanced loss, Adam, early stopping on validation AP, threshold tuned on validation). The code is in \texttt{rtxgnn/baselines.py}.
+
+\begin{itemize}
+\item \textbf{GCN, GraphSAGE, GAT.} PyTorch Geometric layers on the symmetrised payment graph; GAT uses 4 heads.
+\item \textbf{EvolveGCN-O.} The weight matrix of each of the two GCN layers is the hidden state of an LSTM whose input is the previous weight matrix (rows are treated as the batch). The LSTM steps once per time step over all 49 snapshots, including validation and test snapshots, which are processed without labels. Each snapshot is convolved with its own normalised adjacency.
+\item \textbf{TGAT.} Two temporal attention layers. Keys and values are built from $[\mathbf{h}_u\,\Vert\,\Phi(\Delta_{uv})\,\Vert\,r_{uv}]$ and queries from $[\mathbf{h}_v\,\Vert\,\Phi(0)]$, with the functional time encoding $\Phi(\Delta)=\cos(\boldsymbol{\omega}\Delta+\mathbf{b})$ \citep{xu2020tgat}. All neighbours are used, since Elliptic degrees are small.
+\item \textbf{TGN.} A GRU memory is updated from messages $[\mathbf{s}_v\,\Vert\,\mathbf{s}_u\,\Vert\,\Phi(t-t^{-}_v)\,\Vert\,\mathbf{x}_u]$ aggregated by their mean. The embedding module is one TGAT layer over $\mathrm{ReLU}(\mathbf{W}\mathbf{x}+\mathbf{W}'\mathbf{s})$. Events are processed in chronological batches: one batch per time step on Elliptic, and one batch per day on the synthetic data. Embeddings of the nodes involved in a batch are computed from the memory after the batch update. On Elliptic every node takes part in the events of a single time step only, so the memory before that step is always empty.
+\item \textbf{APAN.} Every node has a mailbox of its $K=10$ most recent mails. Its embedding is multi-head attention of its own state over the mailbox followed by an MLP. Mails $\mathbf{W}[\mathbf{z}_u\Vert\mathbf{z}_v\Vert\Phi(\Delta_{uv})]$ are propagated to the 1-hop neighbours. On snapshot data we run one encoding pass, one propagation round and a second encoding pass per step, instead of the asynchronous propagation of the original system \citep{wang2021apan}.
+\item \textbf{CARE-GNN.} Single-relation version: a label-aware similarity network (a linear classifier per layer, trained with an auxiliary cross-entropy of weight 2) defines the distance $|p_u-p_v|$. Each node keeps the top-$p$ fraction of its neighbours with the smallest distance, and $p$ is adapted after every epoch by $\pm0.02$ when the average distance of the selected neighbours decreases or increases (the reinforcement-learning rule of \citealp{dou2020caregnn}). Aggregation is $\mathrm{ReLU}(\mathbf{W}[\mathbf{h}_v\Vert\mathrm{mean}_{u\in\text{sel}}\mathbf{h}_u])$.
+\item \textbf{PC-GNN.} Pick: in every epoch the loss is computed on a label-balanced sample of training nodes, drawn with probability proportional to $(\deg(v)+1)/|\mathrm{class}(v)|$, with four times as many nodes as there are illicit training nodes. Choose: neighbours whose label-aware distance exceeds $\rho=0.5$ are dropped, and every illicit training node receives two additional neighbours drawn from the illicit training nodes. Label-aware predictor with auxiliary loss weight 2.
+\item \textbf{GAS.} Two GCN branches, one on the payment graph and one on a $k$-nearest-neighbour graph ($k=5$, cosine similarity of features) built within each time step, concatenated before the classifier. This replaces the review-content similarity graph of the original.
+\item \textbf{FRAUDRE.} Layers $\mathrm{ReLU}(\mathbf{W}[\mathbf{h}_v\Vert\mathrm{mean}_u\mathbf{h}_u\Vert|\mathrm{mean}_u\mathbf{h}_u-\mathbf{h}_v|])$ (fraud-aware convolution with node--neighbour differences). The classifier takes the concatenation of the input and of all layer outputs, and imbalance is handled by the class-balanced loss.
+\item \textbf{SEFraud.} A feature-mask MLP and an edge-mask MLP gate a two-layer graph transformer, as in \citet{li2024sefraud} but on a single node and edge type. Its loss adds to the classification loss a triplet loss (margin 1, weight 0.5) with anchor the embedding of the unmasked graph, positive the embedding of the masked graph and negative the embedding of the complementary graph, plus an $L_1$ mask penalty of weight 0.01.
+\end{itemize}
+
+\section{Effect of feature preprocessing}
+\label{app:preprocessing}
+
+\begin{table}[!ht]
+\centering
+\caption{Test results on Elliptic (seed 0) with raw features versus quantile-normalised features (Section~\ref{sec:setup}). All other settings are identical.}
+\label{tab:preprocessing}
+\footnotesize
+\input{tables/preprocessing.tex}
+\end{table}

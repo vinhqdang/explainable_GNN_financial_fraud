@@ -264,7 +264,9 @@ class EvolveGCN(nn.Module):
                 continue
             h = x[nodes]
             for i in range(2):
-                h = self.drop(F.relu(torch.sparse.mm(A, h @ state[i][0])))
+                # LSTM outputs lie in (-1, 1); scale by fan-in as in standard initialisation
+                W = state[i][0] / math.sqrt(state[i][0].size(0))
+                h = self.drop(F.relu(torch.sparse.mm(A, h @ W)))
             logits = logits.index_put((nodes,), self.out(h).squeeze(-1))
         return {"logit": logits}
 

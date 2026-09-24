@@ -1,0 +1,52 @@
+\section{Experimental setup}
+\label{sec:setup}
+
+All numbers in this and the following sections are produced by the scripts in the \texttt{experiments/} directory of the public repository. Each script writes one JSON record per run, and the tables are generated from these records. Every experiment of the first version was re-run for this revision (see the response letter).
+
+\subsection{Datasets}
+\label{subsec:datasets}
+
+\paragraph{Elliptic Bitcoin dataset} The Elliptic dataset \citep{weber2019anti} contains 203,769 Bitcoin transactions (nodes) and 234,355 directed payment flows (edges) in 49 time steps of about two weeks each. 4,545 transactions (2.2\%) are labelled illicit, 42,019 (20.6\%) licit and the remaining 157,205 (77.1\%) are unlabelled. Each transaction has 166 anonymised features. The first is the time step. The next 93 are \emph{local} features of the transaction (the dataset documentation mentions, among others, the numbers of inputs and outputs, fees and output volume). The last 72 are \emph{aggregated} features, statistics over the transaction's one-hop neighbourhood. The time step is not used as a feature, so every model receives $d=165$ features. No edge crosses a time step. We use the temporal split of the first version: steps 1--30 for training (26,905 labelled transactions, 2,954 illicit), steps 31--34 for validation (2,989; 508 illicit) and steps 35--49 for testing (16,670; 1,083 illicit). \ref{app:elliptic} (Table~\ref{tab:elliptic_steps}) lists the number of licit, illicit and unlabelled transactions in every time step. The counts in the first version described the unlabelled nodes rather than the labelled ones and have been corrected.
+
+\paragraph{T-Finance} T-Finance \citep{tang2022rethinking} is a transaction network of a financial company with 39,357 accounts, 21.2 million undirected edges (transactions between accounts) and 10 account features; 4.58\% of the accounts are labelled fraudulent by human experts. We use the version and the first five fully supervised splits (40\%/20\%/40\% train/validation/test) of GADBench \citep{tang2023gadbench}. T-Finance has no timestamps, so it tests whether SEAL and the explanation objective carry over to a second real-world financial network with different features, entities and label source. HRAPE is switched off and temporal baselines are not applicable. To keep full-batch training on CPU tractable, graph models see at most 25 uniformly sampled neighbours per account (the same fan-out as at inference time), which reduces the graph to 0.9 million undirected edges.
+
+\paragraph{Synthetic temporal laundering benchmark} The synthetic benchmark contains a signal that is known by construction and that only a model using timing information can exploit. The generator (\texttt{rtxgnn/synthetic.py}) works as follows.
+(1)~A Barab\'asi--Albert graph on $n=5{,}000$ accounts ($m=2$) defines which pairs transact. Each pair gets a random direction and a Poisson number of transactions (mean 3), with timestamps uniform on $[0,180]$ days and log-normal amounts ($\mu=5,\sigma=1$).
+(2)~Fifty laundering rings are laid on disjoint accounts. Each is a directed cycle of length $L\sim\mathcal{U}\{4,\dots,8\}$ executed within a \emph{burst} of 2 days at a random start time, with a 1--3\% fee per hop. Ring members keep their ordinary transactions.
+(3)~Fifty \emph{decoy} cycles with the same length and amount distribution are laid on other accounts, but their hops are spread over the whole horizon. The cycle structure alone therefore does not identify laundering; the timing of consecutive hops does.
+(4)~Every account has 16 features: 7 behavioural statistics computed from all its transactions (in/out counts, mean and standard deviation of in/out log-amounts, number of counterparties; standardised), a constant, and 8 i.i.d.\ $\mathcal{N}(0,1)$ noise features.
+Ring members form the positive class (6.1\% of accounts), and the ground-truth explanation of a ring member consists of its two ring transactions. All accounts are scored at $t=180$ days with a stratified random 60/20/20 split.
+Besides this \emph{default} setting we generate four variants: \emph{no\_decoy} (no decoy cycles, so structure alone suffices), \emph{wide\_burst} (rings completed within 10 instead of 2 days), \emph{label\_noise} (5\% of labels flipped) and \emph{shift} (+0.5 added to the noise features of ring members, a weak feature signal). Every setting is generated with seeds 0--4, and seed $s$ is also the model seed. The first version reported a perfect F1 score on a simpler generator in which ring members' features were shifted by $+2$ standard deviations in all 166 dimensions, which made the task trivially separable by the features alone. That experiment has been replaced.
+
+\paragraph{Removed dataset} The first version reported results on Amazon Computers, a product co-purchase graph for multi-class category prediction. As Reviewer~1 noted, it says nothing about financial fraud, and it has been replaced by T-Finance.
+
+\subsection{Preprocessing}
+
+For all neural models, each feature is mapped to a standard normal distribution by a quantile transform fitted on the transactions of the training steps only (Elliptic: steps 1--30, labelled and unlabelled; T-Finance: training accounts). No labels are used in this fit. Elliptic features are heavy-tailed, and the transform improves every neural model substantially (Table~\ref{tab:preprocessing} in \ref{app:preprocessing} reports results with the raw features). Tree ensembles and logistic regression use the raw features. The transform does not help trees, which are invariant to monotone transformations, and on Elliptic its quantisation slightly reduced the random forest's score.
+
+\subsection{Baselines}
+\label{subsec:baselines}
+
+We compare against 16 baselines in four groups. \ref{app:baselines} describes how each one is adapted.
+\begin{itemize}
+\item \textbf{Feature-only models:} logistic regression (LR, class-balanced), random forest (RF; 100 trees, 50 features per split, the configuration of \citealp{weber2019anti}) and XGBoost \citep{chen2016xgboost} (300 trees, depth 6, class-balanced), and a two-layer MLP.
+\item \textbf{General GNNs:} GCN \citep{kipf2017gcn}, GraphSAGE \citep{hamilton2017graphsage} and GAT \citep{velickovic2018gat}.
+\item \textbf{Temporal GNNs:} EvolveGCN-O \citep{pareja2020evolvegcn}, TGAT \citep{xu2020tgat}, TGN \citep{rossi2020tgn} and APAN \citep{wang2021apan}.
+\item \textbf{Fraud-specific GNNs:} CARE-GNN \citep{dou2020caregnn}, PC-GNN \citep{liu2021pcgnn}, GAS \citep{li2019gas}, FRAUDRE \citep{zhang2021fraudre}, and the self-explaining SEFraud \citep{li2024sefraud}.
+\end{itemize}
+All graph baselines were re-implemented in the same code base, because the original implementations target multi-relation review graphs (CARE-GNN, PC-GNN, FRAUDRE), heterogeneous graphs (GAS, SEFraud) or link prediction on continuous-time graphs (TGAT, TGN, APAN). The re-implementations follow the published architectures, adapted to the single-relation Elliptic graph. We cannot guarantee that they reach the performance of the authors' own code in the original settings.
+
+The first version of this manuscript listed DySAT, H2-FDetector and DGA-GNN with numerical results. We could not reproduce those numbers with our code, and they have been removed. DySAT is not included because its temporal attention is vacuous on Elliptic (each node appears in a single snapshot; Section~\ref{sec:related}). H2-FDetector and DGA-GNN are not included because we did not have validated implementations of them for this data. The first version also stated "nine baselines" while listing eleven and repeated one subsection; both errors are corrected.
+
+\subsection{Protocol and statistical analysis}
+\label{subsec:protocol}
+
+\paragraph{Training} All neural models use the same protocol and budget: hidden size 64, two message-passing layers where applicable, dropout 0.2, the class-balanced loss of Eq.~\eqref{eq:pred_loss} (plus the method's own auxiliary losses), Adam with learning rate $5\cdot10^{-3}$ and weight decay $10^{-5}$, gradient clipping at norm 1, at most 300 full-batch epochs, and early stopping on validation average precision with a patience of 40 epochs. No model, including RTXGNN, was tuned on the test data, and no baseline received a per-model hyper-parameter search. This is a limitation that affects all methods equally.
+
+\paragraph{Decision threshold} Every model outputs a score. The decision threshold is the one that maximises F1 on the validation set, and it is then applied unchanged to the test set. We also report threshold-free metrics: the area under the ROC curve (AUC) and average precision (AP, the area under the precision--recall curve). AP is the more informative of the two under class imbalance.
+
+\paragraph{Metrics} We report F1, precision and recall of the illicit class, together with AUC and AP. The overall test F1 is computed \emph{once over all 16,670 labelled test transactions pooled together} (micro-averaging over time steps), as in \citet{weber2019anti}. It is not the mean of the per-step F1 scores. Section~\ref{subsec:temporal} explains why the two differ.
+
+\paragraph{Seeds and tests} Each configuration on Elliptic is run with 10 random seeds (0--9), which change the parameter initialisation, dropout masks and, for the random forest and XGBoost, the bootstrap and column sampling. We report mean $\pm$ standard deviation over the seeds. Logistic regression is deterministic. We compare RTXGNN with every baseline with a two-sided Wilcoxon signed-rank test on the per-seed F1 and AP pairs \citep{demsar2006statistical}. Seeds are paired because both models use the same seed. We apply Holm's correction \citep{holm1979simple} over the 16 comparisons of each metric. Ablations use 5 seeds (3 for the secondary variants), T-Finance uses GADBench splits 0--4, and the synthetic benchmark uses 5 generated graphs per setting.
+
+\paragraph{Hardware} All experiments ran on CPU only, on a cloud virtual machine with 4 vCPUs of an Intel Xeon processor (model string in \texttt{results/latency.jsonl}) and 15\,GB of memory, using PyTorch~2 and PyTorch Geometric~2.8. Training runs used one or two threads per process. No GPU and no mixed precision was used. The latency measurements are described in Section~\ref{subsec:latency}.

@@ -23,8 +23,11 @@ from rtxgnn.explain import (disjoint_batch, attr_mask, attr_random, attr_salienc
 KS = (5, 10, 20, 40)
 
 
+VARIANT_KW = {"rtxgnn_no_fidelity": {}, "rtxgnn_no_sparsity": {}}
+
+
 def load(name, seed, in_dim):
-    m = build(name, in_dim)
+    m = build(name.split("_")[0], in_dim, **VARIANT_KW.get(name, {}))
     m.load_state_dict(torch.load(os.path.join(RESULTS, "ckpt", f"{name}_s{seed}.pt")))
     m.eval()
     return m
@@ -62,7 +65,7 @@ if __name__ == "__main__":
     lo, hi = [int(s) for s in a.seeds.split("-")]
     masks_by_seed = {}
     for seed in range(lo, hi + 1):
-        for name in ("rtxgnn", "sefraud"):
+        for name in ("rtxgnn", "sefraud", "rtxgnn_no_fidelity", "rtxgnn_no_sparsity"):
             ck = os.path.join(RESULTS, "ckpt", f"{name}_s{seed}.pt")
             if not os.path.exists(ck):
                 continue

@@ -1,0 +1,226 @@
+\section{Methodology}
+\label{sec:methodology}
+
+This section formalises the problem (Section~\ref{subsec:problem}) and describes the two components of RTXGNN: the Hierarchical Recency-Aware Positional Encoding (HRAPE, Section~\ref{subsec:hrape}) and the Self-Explainable Aggregation Layer (SEAL, Section~\ref{subsec:seal}). Section~\ref{subsec:training} presents the training objective and Section~\ref{subsec:inference} the inference procedure used for low-latency scoring. Figure~\ref{fig:architecture} gives an overview. Every equation in this section corresponds one-to-one to the released implementation (module \texttt{rtxgnn/model.py} for the architecture and \texttt{rtxgnn/objective.py} for the objective).
+
+\paragraph{Terminology} Following \citet{rudin2019stop} and \citet{lipton2018mythos}, we distinguish \emph{interpretable} models, whose decision logic can be inspected directly (e.g.\ sparse linear models, shallow decision trees), from \emph{self-explaining} models, which remain complex non-linear predictors but compute an explanation as part of the forward pass. RTXGNN belongs to the second category. Its masks are attributions: they state which inputs the prediction depended on, not the full decision logic. We therefore do not describe it as intrinsically interpretable.
+
+\begin{figure}[!t]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  font=\small,
+  box/.style={draw, rounded corners=2pt, align=center, inner sep=4pt, minimum height=9mm},
+  inp/.style={box, fill=gray!10},
+  hr/.style={box, fill=blue!8, draw=blue!60!black},
+  se/.style={box, fill=orange!10, draw=orange!70!black},
+  ou/.style={box, fill=green!8, draw=green!45!black},
+  lo/.style={box, fill=red!6, draw=red!60!black},
+  ar/.style={-{Latex[length=2mm]}, thick}]
+\node[inp] (x) at (0,0) {node features $\mathbf{x}_v$\\time $\tau_v$};
+\node[inp] (e) at (0,-2.0) {transactions $(u\!\to\!v, t_{uv})$\\both directions, type $r_{uv}$};
+\node[se] (fm) at (3.6,0) {feature mask\\$\mathbf{M}^{f}_v=\sigma(g_f(\mathbf{x}_v))$};
+\node[hr] (hr) at (3.6,-2.0) {HRAPE\\gap code $\mathbf{e}^{\tau}_{uv}$, recency $\rho_{uv}$,\\velocity $\mathbf{c}_v$};
+\node[box] (h0) at (7.3,0) {$\mathbf{h}^0_v=\mathrm{ReLU}(\mathbf{W}_{in}(\mathbf{x}_v\odot\mathbf{M}^f_v)$\\$\;+\mathbf{W}_c\mathbf{c}_v)$};
+\node[se, minimum width=4.6cm] (seal) at (7.3,-2.6) {SEAL layer $\ell=1,\dots,L$\\edge mask $M^{e}_{uv}$, node mask $M^{n}_u$\\attention $\alpha_{uv}$ with recency bias\\message gate $\alpha_{uv}M^e_{uv}M^n_u$};
+\node[ou] (pred) at (11.4,0) {prediction\\$\hat y_v=\sigma(\mathrm{MLP}[\mathbf{h}^0_v\|\mathbf{h}^L_v])$};
+\node[ou] (expl) at (11.4,-2.6) {explanation (same pass)\\top-$k$ features of $\mathbf{M}^f_v$\\top-$k$ edges of $M^e M^n \bar\alpha$};
+\node[lo, minimum width=11cm] (loss) at (6.2,-4.9) {training only: $\mathcal{L}=\mathcal{L}_{pred}+w(e)\,[\lambda_{suf}\mathcal{L}_{suf}+\lambda_{nec}\mathcal{L}_{nec}+\lambda_{sp}\mathcal{L}_{sp}]$\\
+$\mathcal{L}_{suf}$: keep only the top-$k$ explanation $\Rightarrow$ same prediction; \quad $\mathcal{L}_{nec}$: keep only its complement $\Rightarrow$ uninformative prediction};
+\draw[ar] (x) -- (fm); \draw[ar] (fm) -- (h0); \draw[ar] (e) -- (hr);
+\draw[ar] (hr.east) -- ++(0.35,0) |- (seal.west);
+\draw[ar] (hr.north) -- ++(0,0.5) -| ([xshift=-12mm]h0.south);
+\draw[ar] (h0) -- (seal); \draw[ar] (seal.east) -- ++(0.4,0) |- (pred.west);
+\draw[ar] (h0) -- (pred);
+\draw[ar] (seal) -- (expl); \draw[ar] (fm.north) -- ++(0,0.45) -| (expl.north east);
+\draw[ar, dashed] (expl.south) -- (expl.south |- loss.north);
+\draw[ar, dashed] (pred.south east) -- ++(0.5,0) |- (loss.east);
+\end{tikzpicture}}
+\caption{Overview of RTXGNN. The masks that form the explanation are the gates that produce the prediction, so both come out of one forward pass. The objective in the bottom box is used only during training. It evaluates the model twice more, once on the top-$k$ explanation and once on its complement (Section~\ref{subsec:training}).}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Problem formulation}
+\label{subsec:problem}
+
+A transaction network is a directed graph $\mathcal{G}=(\mathcal{V},\mathcal{E})$. Each node $v\in\mathcal{V}$ (a transaction in Elliptic, an account in T-Finance and in the synthetic benchmark) has a feature vector $\mathbf{x}_v\in\mathbb{R}^{d}$ and a timestamp $\tau_v$, the time at which it has to be scored. Each edge $(u\to v)\in\mathcal{E}$ is a flow of funds with timestamp $t_{uv}\le\tau_v$. Message passing uses both directions of every edge. The reversed copy $(v\to u)$ carries the type $r=1$ and the original the type $r=0$, so the model can distinguish incoming from outgoing funds. The time gap of a directed edge is $\Delta_{uv}=|\tau_v-t_{uv}|$.
+
+Given the labelled nodes observed up to a cut-off time, the task is to estimate for every later node the probability $\hat y_v=f_\theta(\mathcal{G},v)\in[0,1]$ that it is illicit. At the same time the model returns an explanation $\mathcal{X}_v$: a ranking of the node's own features and a ranking of its incoming edges by their contribution to $\hat y_v$. The decision threshold on $\hat y_v$ is chosen on validation data (Section~\ref{subsec:protocol}).
+
+\subsection{Hierarchical Recency-Aware Positional Encoding (HRAPE)}
+\label{subsec:hrape}
+
+HRAPE supplies three kinds of temporal information to SEAL. In contrast to the first version of this work, it depends only on time \emph{differences} and on counts in trailing windows, never on the absolute timestamp. A model evaluated on future time steps then never sees an out-of-range time value. Section~\ref{subsec:ablation} shows that encoding the absolute timestamp, as the first version did, reduces test performance markedly under the temporal split.
+
+\paragraph{Multi-scale gap encoding} For a set of periods $P_1,\dots,P_S$ (in the time unit of the data) the gap of an edge is encoded as
+\begin{equation}
+\boldsymbol{\phi}(\Delta)=\big[\sin(2\pi\Delta/P_s),\cos(2\pi\Delta/P_s)\big]_{s=1}^{S},\qquad \mathbf{e}^{\tau}_{uv}=\mathbf{W}_{\Delta}\,\boldsymbol{\phi}(\Delta_{uv}),
+\label{eq:gap}
+\end{equation}
+with $\mathbf{W}_{\Delta}\in\mathbb{R}^{D\times 2S}$ learnable. We use $P=(2,4,13,26)$ time steps for Elliptic (one month to one year) and $P=(1,7,30,90)$ days for the synthetic benchmark.
+
+\paragraph{Recency} A learnable decay turns the gap into a recency score that biases attention (Eq.~\ref{eq:att}):
+\begin{equation}
+\rho_{uv}=\exp\!\big(-\mathrm{softplus}(\lambda)\,\Delta_{uv}\big).
+\label{eq:recency}
+\end{equation}
+
+\paragraph{Velocity} Burst behaviour is captured by the number of transactions a node received in trailing windows $w_1<w_2<w_3$ before $\tau_v$,
+\begin{equation}
+\mathbf{c}_v=\Big[\log\big(1+|\{(u\to v): 0\le \tau_v-t_{uv}<w_k\}|\big)\Big]_{k=1}^{3},
+\label{eq:velocity}
+\end{equation}
+with $w=(1,2,4)$ steps for Elliptic and $(1,7,30)$ days for the synthetic data. The velocity vector enters the input embedding (Eq.~\ref{eq:h0}).
+
+\paragraph{What HRAPE can and cannot do on Elliptic} In Elliptic every edge connects two transactions of the same time step and each transaction appears in exactly one time step \citep{weber2019anti}. Hence $\Delta_{uv}=0$ for all edges: the gap code is a constant, $\rho_{uv}=1$, and the velocity vector reduces to the node's in-degree within its time step. On Elliptic HRAPE therefore contributes little beyond a degree feature, and our ablation (Section~\ref{subsec:ablation}) confirms this. The temporal mechanisms become informative only on data with continuous timestamps. We test this on the synthetic benchmark (Section~\ref{subsec:synthetic}), where laundering rings differ from decoy cycles only in the timing of their hops. The hour-of-day, day-of-week and inter-transaction velocity features described in the first version of this manuscript cannot be computed from the public Elliptic data and have been removed.
+
+\subsection{Self-Explainable Aggregation Layer (SEAL)}
+\label{subsec:seal}
+
+\paragraph{Input feature mask and embedding} A two-layer MLP $g_f:\mathbb{R}^{d}\to\mathbb{R}^{d}$ produces a per-node, per-feature mask that gates the raw input features:
+\begin{align}
+\mathbf{M}^{f}_v&=\sigma\big(g_f(\mathbf{x}_v)+2\big)\in(0,1)^{d},\label{eq:featmask}\\
+\mathbf{h}^{0}_v&=\mathrm{ReLU}\big(\mathbf{W}_{in}(\mathbf{x}_v\odot\mathbf{M}^{f}_v)+\mathbf{W}_{c}\mathbf{c}_v\big).\label{eq:h0}
+\end{align}
+The constant $+2$ initialises the mask close to one, so that training starts from the unmasked model. Unlike the first version, the feature mask is applied only to the raw input features, where it is interpretable as an attribution over named (or at least identifiable) inputs, and not to hidden representations.
+
+\paragraph{Masks of layer $\ell$} Given $\mathbf{h}^{\ell-1}$, each SEAL layer computes a node (source) mask and an edge mask,
+\begin{align}
+M^{n}_u&=\sigma\big(g_n(\mathbf{h}^{\ell-1}_u)\big),\label{eq:nodemask}\\
+M^{e}_{uv}&=\sigma\big(\mathbf{w}^{\top}\mathrm{ReLU}(\mathbf{A}\mathbf{h}^{\ell-1}_v+\mathbf{B}\mathbf{h}^{\ell-1}_u+\mathbf{C}_{r_{uv}}+\mathbf{T}\mathbf{e}^{\tau}_{uv})+b\big),\label{eq:edgemask}
+\end{align}
+where $g_n$ is a two-layer MLP and $\mathbf{A},\mathbf{B},\mathbf{T}\in\mathbb{R}^{D\times D}$, $\mathbf{C}_r\in\mathbb{R}^{D}$. Eq.~\eqref{eq:edgemask} is an MLP applied to the concatenation $[\mathbf{h}_v\|\mathbf{h}_u\|\mathbf{C}_{r}\|\mathbf{e}^{\tau}_{uv}]$, written in a factorised form that is evaluated with node-level matrix products.
+
+\paragraph{Attention with recency bias} With $H$ heads of size $D_k=D/H$,
+\begin{align}
+\mathbf{q}_v&=\mathbf{W}_Q\mathbf{h}^{\ell-1}_v,\quad
+\mathbf{k}_{uv}=\mathbf{W}_K\mathbf{h}^{\ell-1}_u+\mathbf{E}^{K}_{r_{uv}}+\mathbf{e}^{\tau}_{uv},\quad
+\mathbf{m}_{uv}=\mathbf{W}_V\mathbf{h}^{\ell-1}_u+\mathbf{E}^{V}_{r_{uv}}+\mathbf{e}^{\tau}_{uv},\nonumber\\
+\alpha^{(i)}_{uv}&=\operatorname{softmax}_{u\in\mathcal{N}(v)}\Big(\mathbf{q}^{(i)\top}_v\mathbf{k}^{(i)}_{uv}/\sqrt{D_k}+\gamma\,\rho_{uv}\Big),\quad i=1,\dots,H,\label{eq:att}
+\end{align}
+where $^{(i)}$ selects the coordinates of head $i$ and $\gamma$ is learnable.
+
+\paragraph{Gated aggregation and update} The masks gate the attention-weighted messages \emph{after} normalisation, so an edge with $M^e_{uv}\to0$ is removed from the computation instead of being compensated by a renormalised softmax:
+\begin{align}
+\mathbf{a}_v&=\mathbf{W}_O\Big\Vert_{i=1}^{H}\sum_{u\in\mathcal{N}(v)}\alpha^{(i)}_{uv}\,M^{e}_{uv}\,M^{n}_{u}\,\mathbf{m}^{(i)}_{uv},\label{eq:agg}\\
+\tilde{\mathbf{h}}_v&=\mathrm{LN}\big(\mathbf{h}^{\ell-1}_v+\mathrm{Dropout}(\mathbf{a}_v)\big),\qquad
+\mathbf{h}^{\ell}_v=\mathrm{LN}\big(\tilde{\mathbf{h}}_v+\mathrm{FFN}(\tilde{\mathbf{h}}_v)\big).\label{eq:update}
+\end{align}
+
+\paragraph{Prediction and explanation} After $L$ layers the prediction uses both the input embedding and the propagated representation (a skip connection that matters on Elliptic, where the node's own features are highly informative):
+\begin{equation}
+\hat y_v=\sigma\big(\mathrm{MLP}([\mathbf{h}^{0}_v\,\Vert\,\mathbf{h}^{L}_v])\big).
+\label{eq:pred}
+\end{equation}
+The explanation of $v$ is read from the same forward pass:
+\begin{equation}
+\mathcal{X}_v=\Big(\operatorname{TopK}_{k_f}\big(\mathbf{M}^{f}_v\big),\;\operatorname{TopK}_{k_e}\big\{I_{uv}=M^{e}_{uv}M^{n}_{u}\bar\alpha_{uv}:u\in\mathcal{N}(v)\big\}\Big),
+\label{eq:explanation}
+\end{equation}
+with $\bar\alpha_{uv}$ the head-averaged attention of the last layer. The first part ranks the node's own features, the second ranks its incoming (and, through the reversed copies, outgoing) transactions. Because the edge importance $I_{uv}$ is the gate that multiplied the message of $u$ in Eq.~\eqref{eq:agg}, an edge with a small $I_{uv}$ had a proportionally small influence on $\mathbf{h}^L_v$.
+
+\subsection{Training objective}
+\label{subsec:training}
+
+\paragraph{Prediction loss} We use a class-balanced binary cross-entropy in which each class contributes half of the loss,
+\begin{equation}
+\mathcal{L}_{pred}=\frac{1}{|\mathcal{V}_{tr}|}\sum_{v\in\mathcal{V}_{tr}}\Big[\tfrac{y_v}{2\pi}\,\ell(\hat y_v,1)+\tfrac{1-y_v}{2(1-\pi)}\,\ell(\hat y_v,0)\Big],
+\label{eq:pred_loss}
+\end{equation}
+where $\ell$ is the log-loss and $\pi$ the fraction of illicit labels among the training nodes $\mathcal{V}_{tr}$. The focal loss of the first version is kept as an ablation. Its values are two orders of magnitude smaller than those of the explanation terms below, which made the weighting of the objective fragile.
+
+\paragraph{Explanation views} Let $\mathrm{top}_k(\cdot)$ be the indicator of the $k$ largest entries: the $k_f$ largest features of $\mathbf{M}^f_v$, and for every node and layer its $k_e$ incoming edges with the largest $M^e_{uv}$. From the soft masks we build two hard views, using the straight-through estimator $\mathbf{M}+(\mathrm{top}_k(\mathbf{M})-\mathbf{M})_{\text{no-grad}}$ so that gradients reach the mask generators:
+\begin{itemize}
+\item the \emph{explanation view} $S$ keeps only the selected features and edges (all other gates are set to zero);
+\item the \emph{complement view} $C$ keeps only the non-selected features and edges.
+\end{itemize}
+Running the model on the two views gives $\hat y^{S}_v$ and $\hat y^{C}_v$ ($M^n$ is kept soft in both views).
+
+\paragraph{Sufficiency and necessity} With $\mathrm{KL}(p\Vert q)$ the Kullback--Leibler divergence between Bernoulli distributions,
+\begin{align}
+\mathcal{L}_{suf}&=\frac{1}{|\mathcal{V}_{tr}|}\sum_{v\in\mathcal{V}_{tr}}\mathrm{KL}\big(\operatorname{sg}(\hat y_v)\,\Vert\,\hat y^{S}_v\big),\label{eq:suf}\\
+\mathcal{L}_{nec}&=\frac{1}{|\mathcal{V}_{tr}|}\sum_{v\in\mathcal{V}_{tr}}\mathrm{KL}\big(\pi\,\Vert\,\hat y^{C}_v\big),\label{eq:nec}
+\end{align}
+where $\operatorname{sg}$ stops the gradient. $\mathcal{L}_{suf}$ asks that the top-$k$ explanation alone reproduce the model's prediction. $\mathcal{L}_{nec}$ asks that the remaining inputs alone carry no information about the label, i.e.\ that the prediction on the complement fall back to the class prior. These are the factual and counterfactual criteria of \citet{tan2022counterfactual}, and they match the Fid$^-$ and Fid$^+$ metrics used in evaluation \citep{yuan2021subgraphx,amara2022graphframex}.
+
+\paragraph{Why the objective cannot be met by ignoring the masks} The first version minimised $\mathrm{KL}(f(\mathcal{G})\Vert f(\mathcal{G}_{masked}))$ with soft masks only, as Reviewer~1 pointed out. That objective is minimised trivially by masks that are all close to one, or by a model that is insensitive to the masks, and it says nothing about whether the masks are faithful. The revised objective rules out both degenerate solutions:
+(i) the views are \emph{hard}: in $S$ all but $k_f$ of the $d$ features and all but $k_e$ incoming edges are removed, so $\mathcal{L}_{suf}$ can only be small if the selected elements actually carry the prediction;
+(ii) a model that ignores the masks predicts the same value on the complement $C$ as on the full input, which incurs $\mathcal{L}_{nec}>0$ for every node whose prediction differs from the prior;
+(iii) a mask that is uninformative about importance (for instance uniform) produces a random top-$k$ selection, for which both terms are large unless the model does not depend on the inputs at all, and that case is excluded by $\mathcal{L}_{pred}$.
+The objective uses only the model's own predictions and the class prior, never the labels of the explained nodes, so it does not supervise the explanation with labels.
+
+\paragraph{Sparsity} $\mathcal{L}_{sp}$ is the mean $L_1$ norm of all masks,
+\begin{equation}
+\mathcal{L}_{sp}=\overline{\mathbf{M}^{f}}+\frac{1}{L}\sum_{\ell=1}^{L}\big(\overline{M^{e,(\ell)}}+\overline{M^{n,(\ell)}}\big),
+\label{eq:sparse}
+\end{equation}
+where the bar denotes the mean over all entries. This is ordinary $L_1$ regularisation of auxiliary gate activations. We do not claim it is a new form of regularisation, and Section~\ref{subsec:regularisation} compares it with dropout and weight decay.
+
+\paragraph{Removed term} The first version contained a temporal consistency loss that rewarded high temporal weights on edges incident to fraudulent nodes and low weights elsewhere. Because it supervised an internal gate directly with training labels, it could leak label information into the explanation and was not justified. It has been removed.
+
+\paragraph{Total objective and curriculum}
+\begin{equation}
+\mathcal{L}=\mathcal{L}_{pred}+w(e)\big(\lambda_{suf}\mathcal{L}_{suf}+\lambda_{nec}\mathcal{L}_{nec}+\lambda_{sp}\mathcal{L}_{sp}\big),\qquad w(e)=\min(1,e/e_{w}),
+\label{eq:total}
+\end{equation}
+with epoch $e$, warm-up $e_w=20$, $\lambda_{suf}=\lambda_{nec}=0.5$, $\lambda_{sp}=0.05$, $k_f=10$ and $k_e=2$. These values were fixed before the experiments reported here and were not tuned on test data.
+
+\subsection{Training and inference procedures}
+\label{subsec:inference}
+
+Algorithm~\ref{alg:training} gives the training procedure. We train full-batch on the subgraph induced by the 2-hop neighbourhoods of the labelled training nodes. For a model with $L=2$ message-passing layers this is exact: every training prediction depends only on the 2-hop neighbourhood of its node, so no neighbourhood sampling is used during training. Evaluation on validation and test nodes uses the 2-hop neighbourhoods of those nodes in the same way.
+
+At inference time (Algorithm~\ref{alg:inference}) a request consists of one or more transactions to score. For each target we sample at most $F=25$ incoming neighbours per hop for two hops from an in-memory CSR adjacency, run one forward pass on the union of the sampled subgraphs, and read the explanation of every target from the masks of that pass (Eq.~\ref{eq:explanation}). On Elliptic the in-degree rarely exceeds $F$, so the sampled neighbourhood is almost always the exact 2-hop neighbourhood. The latency of every step of this procedure is measured in Section~\ref{subsec:latency}.
+
+\begin{algorithm}[!t]
+\caption{RTXGNN training (as implemented in \texttt{rtxgnn/train.py} and \texttt{rtxgnn/objective.py}).}
+\label{alg:training}
+\begin{algorithmic}[1]
+\REQUIRE graph $\mathcal{G}$ with features $\mathbf{X}$, timestamps; labelled training nodes $\mathcal{V}_{tr}$ with labels $y$; validation nodes $\mathcal{V}_{val}$; hyper-parameters $\lambda_{suf},\lambda_{nec},\lambda_{sp},k_f,k_e,e_w,E,$ patience $Q$
+\ENSURE parameters $\theta^\ast$ and decision threshold $\eta^\ast$
+\STATE $\mathcal{G}_{tr}\gets$ subgraph induced by the 2-hop neighbourhoods of $\mathcal{V}_{tr}$; $\mathcal{G}_{ev}\gets$ same for $\mathcal{V}_{val}$
+\STATE compute $\Delta_{uv}$ for all directed edges and $\mathbf{c}_v$ for all nodes (Eqs.~\ref{eq:gap}--\ref{eq:velocity}); $\pi\gets$ mean of $y$ over $\mathcal{V}_{tr}$
+\STATE initialise $\theta$; Adam optimiser (learning rate $5\cdot10^{-3}$, weight decay $10^{-5}$)
+\FOR{$e=0,\dots,E-1$}
+  \STATE $\mathbf{M}^f,\{M^{n,(\ell)},M^{e,(\ell)}\}_{\ell},\hat{\mathbf{y}}\gets$ forward pass of Eqs.~\ref{eq:featmask}--\ref{eq:pred} on $\mathcal{G}_{tr}$
+  \STATE $\mathcal{L}\gets\mathcal{L}_{pred}(\hat{\mathbf{y}}_{\mathcal{V}_{tr}},y)$ \COMMENT{Eq.~\ref{eq:pred_loss}}
+  \STATE $w\gets\min(1,e/e_w)$
+  \IF{$w>0$}
+     \STATE $S\gets$ hard top-$k_f$ features per node and top-$k_e$ incoming edges per node and layer (straight-through); $C\gets 1-S$
+     \STATE $\hat{\mathbf{y}}^S\gets$ forward pass with masks replaced by $S$; \ $\hat{\mathbf{y}}^C\gets$ forward pass with masks replaced by $C$
+     \STATE $\mathcal{L}\gets\mathcal{L}+w\,\lambda_{suf}\mathcal{L}_{suf}+w\,\lambda_{nec}\mathcal{L}_{nec}$ \COMMENT{Eqs.~\ref{eq:suf}, \ref{eq:nec}}
+  \ENDIF
+  \STATE $\mathcal{L}\gets\mathcal{L}+w\,\lambda_{sp}\mathcal{L}_{sp}$ \COMMENT{Eq.~\ref{eq:sparse}}
+  \STATE $\theta\gets\theta-\mathrm{Adam}(\nabla_\theta\mathcal{L})$ with gradient-norm clipping at 1
+  \IF{$e$ is even}
+     \STATE compute average precision $\mathrm{AP}_{val}$ of the forward pass on $\mathcal{G}_{ev}$ at the nodes $\mathcal{V}_{val}$
+     \STATE \textbf{if} $\mathrm{AP}_{val}$ improved \textbf{then} $\theta^\ast\gets\theta$ \textbf{else if} no improvement for $Q$ epochs \textbf{then break}
+  \ENDIF
+\ENDFOR
+\STATE $\eta^\ast\gets\arg\max_\eta \mathrm{F1}_{val}(\eta)$ for the model $\theta^\ast$
+\RETURN $\theta^\ast,\eta^\ast$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[!t]
+\caption{RTXGNN inference for a request (as implemented in \texttt{rtxgnn/serving.py}).}
+\label{alg:inference}
+\begin{algorithmic}[1]
+\REQUIRE trained $\theta^\ast$, threshold $\eta^\ast$; CSR adjacency of the live graph; target transactions $B$; fan-out $F=25$; $k_f,k_e$
+\STATE $N_0\gets B$; $\mathcal{E}_B\gets\emptyset$
+\FOR{hop $h=1,2$}
+  \STATE for every $v\in N_{h-1}$ draw at most $F$ incoming edges uniformly at random; add them to $\mathcal{E}_B$
+  \STATE $N_h\gets$ sources of the edges drawn in this hop
+\ENDFOR
+\STATE build the subgraph on $N_0\cup N_1\cup N_2$ with edges $\mathcal{E}_B$ (features, $\Delta_{uv}$, types, $\mathbf{c}_v$)
+\STATE one forward pass (Eqs.~\ref{eq:featmask}--\ref{eq:pred}) without gradients
+\FOR{$v\in B$}
+  \STATE score $\hat y_v$; decision $\mathbb{1}[\hat y_v\ge\eta^\ast]$; explanation $\mathcal{X}_v$ from Eq.~\ref{eq:explanation}
+\ENDFOR
+\RETURN scores, decisions and explanations
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Complexity} A SEAL layer costs $\mathcal{O}(|\mathcal{V}|D^2+|\mathcal{E}|D)$: the projections and mask MLPs are node-level matrix products, and each edge requires $\mathcal{O}(D)$ operations for its attention score, gate and message. Feature-mask generation adds $\mathcal{O}(|\mathcal{V}|dD)$. The explanation adds only a top-$k$ selection at inference time. During training each epoch performs three forward passes (full, $S$ and $C$), so an epoch costs about three times as much as for a SEAL network without the explanation objective.
+
+\paragraph{Implementation} RTXGNN is implemented in PyTorch \citep{paszke2019pytorch} with PyTorch Geometric \citep{fey2019fast}. We use $L=2$ SEAL layers, hidden size $D=64$, $H=4$ heads, dropout 0.2, at most 300 epochs, early stopping with patience $Q=40$ epochs on validation average precision (evaluated every second epoch), and gradient clipping at norm 1. The configuration reported in the first version ($L=3$, $D=128$, FP16 training on an A100 GPU, 4-hop neighbourhood sampling) does not correspond to the released code; all experiments of this revision were run on CPU with the configuration above (hardware in Section~\ref{subsec:protocol}).

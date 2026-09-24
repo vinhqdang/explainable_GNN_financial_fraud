@@ -58,7 +58,7 @@ def run_one(name, seed, d, dtr, dev, out_path, save_pred=True, epochs=300, patie
         p, thr, hist = train_model(model, dtr, dev, epochs=epochs, patience=patience, rtx_cfg=ocfg,
                                    eval_every=2 if base == "rtxgnn" else 1, **okw)
         info = dict(epochs=len(hist), params=n_params(model), best_val_ap=max(h["val_ap"] for h in hist))
-        if base in ("rtxgnn", "sefraud", "gat") and seed < 5:
+        if base in ("rtxgnn", "sefraud", "gat") and seed < 5 and not getattr(run_one, "no_ckpt", False):
             os.makedirs(os.path.join(RESULTS, "ckpt"), exist_ok=True)
             torch.save(model.state_dict(), os.path.join(RESULTS, "ckpt", f"{name.replace(':', '_')}_s{seed}.pt"))
     row = dict(model=name, seed=seed, thr=thr, time=time.time() - t0, **info,
@@ -66,7 +66,7 @@ def run_one(name, seed, d, dtr, dev, out_path, save_pred=True, epochs=300, patie
                val=evaluate(p, dev, thr, dev.val_mask),
                steps=per_step(p, dev, thr, test_steps))
     append_jsonl(out_path, row)
-    if save_pred:
+    if save_pred and not getattr(run_one, "no_ckpt", False):
         os.makedirs(os.path.join(RESULTS, "preds"), exist_ok=True)
         np.save(os.path.join(RESULTS, "preds", f"{name.replace(':', '_')}_s{seed}.npy"), p.astype(np.float32))
     print(f"{name} seed {seed}: F1 {row['test']['f1']:.4f} AUC {row['test']['auc']:.4f} "
@@ -80,13 +80,17 @@ if __name__ == "__main__":
     ap.add_argument("--seeds", default="0-9")
     ap.add_argument("--tag", default="main")
     ap.add_argument("--threads", type=int, default=4)
+    ap.add_argument("--raw", action="store_true", help="neural models use the raw (not quantile-normalised) features")
     a = ap.parse_args()
     torch.set_num_threads(a.threads)
     out = os.path.join(RESULTS, f"elliptic_{a.tag}.jsonl")
     d = elliptic()
+    if a.raw:
+        d.x = d.x_raw.clone()
     dtr, dev = split_regions(d)
     np.save(os.path.join(RESULTS, "elliptic_eval_ids.npy"), dev.orig_id.numpy())
     done = done_keys(out)
+    run_one.no_ckpt = a.raw
     for seed in parse_seeds(a.seeds):
         for name in a.models.split(","):
             if (name, seed) in done:

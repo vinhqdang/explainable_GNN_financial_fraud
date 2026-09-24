@@ -1,0 +1,12 @@
+\begin{tabular}{lrrrrrrr}
+\toprule
+ & \multicolumn{3}{c}{at validation threshold} & \multicolumn{4}{c}{precision at an alert budget of}\\
+\cmidrule(lr){2-4}\cmidrule(lr){5-8}
+Model & alerts & missed & false alerts & 250 & 500 & 1,000 & 2,000\\
+\midrule
+GraphSAGE & 1,095 & 300 & 312 & 1.00 & 0.99 & 0.77 & 0.41\\
+GAT & 1,036 & 319 & 272 & 1.00 & 0.98 & 0.76 & 0.41\\
+Random forest & 1,022 & 308 & 246 & 1.00 & 1.00 & 0.78 & 0.40\\
+XGBoost & 945 & 290 & 152 & 1.00 & 1.00 & 0.80 & 0.41\\
+\bottomrule
+\end{tabular}

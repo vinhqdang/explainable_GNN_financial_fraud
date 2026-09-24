@@ -1,0 +1,90 @@
+\section*{List of abbreviations}
+
+\begin{center}
+\begin{longtable}{ll}
+\caption{Abbreviations used in this paper.}
+\label{tab:abbreviations} \\
+\hline
+\textbf{Abbreviation} & \textbf{Full term} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Abbreviation} & \textbf{Full term} \\
+\hline
+\endhead
+\hline
+\multicolumn{2}{r}{\textit{Continued on next page}} \\
+\endfoot
+\hline
+\endlastfoot
+\multicolumn{2}{l}{\textit{Regulatory and legal}} \\
+AML/CFT   & Anti-Money Laundering / Countering the Financing of Terrorism \\
+ECOA      & Equal Credit Opportunity Act \\
+FATF      & Financial Action Task Force \\
+GDPR      & General Data Protection Regulation \\
+MiCA      & Markets in Crypto-Assets Regulation \\
+\hline
+\multicolumn{2}{l}{\textit{Machine learning}} \\
+AP        & Average Precision (area under the precision--recall curve) \\
+AUC       & Area Under the Receiver Operating Characteristic Curve \\
+Fid$^{+}$ / Fid$^{-}$ & Fidelity when the explanation is removed / kept alone \\
+GCN, GAT  & Graph Convolutional Network, Graph Attention Network \\
+GNN       & Graph Neural Network \\
+GRU, LSTM & Gated Recurrent Unit, Long Short-Term Memory \\
+IG        & Integrated Gradients \\
+KL        & Kullback--Leibler divergence \\
+LR, RF    & Logistic Regression, Random Forest \\
+MLP       & Multi-Layer Perceptron \\
+XAI       & Explainable Artificial Intelligence \\
+\hline
+\multicolumn{2}{l}{\textit{Proposed method}} \\
+RTXGNN    & Real-Time eXplainable Graph Neural Network (the proposed method) \\
+HRAPE     & Hierarchical Recency-Aware Positional Encoding \\
+SEAL      & Self-Explainable Aggregation Layer \\
+\hline
+\multicolumn{2}{l}{\textit{Baselines}} \\
+APAN      & Asynchronous Propagation Attention Network \\
+CARE-GNN  & Camouflage-Resistant Graph Neural Network \\
+EvolveGCN & Evolving Graph Convolutional Network \\
+FRAUDRE   & Fraud detection dual-resistant to graph inconsistency and imbalance \\
+GAS       & GCN-based Anti-Spam model \\
+PC-GNN    & Pick-and-Choose Graph Neural Network \\
+SEFraud   & Self-Explainable Fraud detection \\
+TGAT, TGN & Temporal Graph Attention network, Temporal Graph Network \\
+\end{longtable}
+\end{center}
+
+\section{Introduction}
+
+Illicit activity in cryptocurrency markets was estimated at USD 24.2 billion in 2023\footnote{\url{https://go.chainalysis.com/crypto-crime-2024.html}}. Blockchain transactions are pseudonymous and irreversible, and funds can be moved through long chains of intermediate addresses. Regulators have extended anti-money-laundering obligations to virtual asset service providers, for example through the FATF guidance on virtual assets and the EU Markets in Crypto-Assets (MiCA) regulation\footnote{\url{https://www.fatf-gafi.org/en/publications/Fatfrecommendations/Guidance-rba-virtual-assets-2021.html}}\footnote{\url{https://www.esma.europa.eu/esmas-activities/digital-finance-and-innovation/markets-crypto-assets-regulation-mica}}. Institutions are expected to flag suspicious transactions promptly and to document why a transaction was flagged.
+
+Graph Neural Networks (GNNs) are a natural model for this setting because they use the relations between transactions and accounts \citep{kipf2017gcn, velickovic2018gat, hamilton2017graphsage}. Fraud-specific architectures such as CARE-GNN \citep{dou2020caregnn} and PC-GNN \citep{liu2021pcgnn} address camouflage and class imbalance. Two practical obstacles remain for decision support. First, a flagged transaction is reviewed by an analyst, who needs to know which inputs drove the score. Post-hoc explainers such as GNNExplainer \citep{ying2019gnnexplainer} and PGExplainer \citep{luo2020pgexplainer} provide this, but they require an additional optimisation or model per explanation and are not guaranteed to reflect the model's reasoning \citep{faber2021groundtruth}. Second, transaction networks change over time, and a model trained on past data can fail abruptly when the underlying activity changes \citep{weber2019anti, gama2014survey}. In addition, strong feature-based learners such as random forests are hard to beat on engineered transaction features \citep{weber2019anti, grinsztajn2022tree}. Claims of an advantage for a graph model therefore require careful comparison.
+
+Self-explaining GNNs compute an explanation in the same forward pass as the prediction. SEFraud \citep{li2024sefraud} learns feature and edge masks for fraud detection on static heterogeneous graphs and reports industrial deployment. Temporal GNNs such as EvolveGCN \citep{pareja2020evolvegcn}, TGAT \citep{xu2020tgat}, TGN \citep{rossi2020tgn} and APAN \citep{wang2021apan} model the evolution of graphs, but do not produce explanations.
+
+\subsection*{Objective and approach}
+
+This paper studies whether a self-explaining temporal GNN can provide explanations that are faithful to its predictions, at a latency compatible with online screening, while remaining competitive in detection accuracy with strong graph and non-graph baselines. We propose \textbf{RTXGNN}, which combines two components:
+
+\begin{enumerate}
+\item \textbf{Hierarchical Recency-Aware Positional Encoding (HRAPE)}, a temporal encoding built only from relative quantities: multi-scale sinusoidal codes of the time gap between a transaction and the scored node, a learnable recency bias of the attention, and transaction counts in trailing windows (velocity). Because HRAPE never encodes the absolute timestamp, it does not extrapolate to unseen time values when the model scores future periods.
+\item \textbf{Self-Explainable Aggregation Layers (SEAL)}, attention-based message-passing layers whose messages are gated by learned edge and node masks, preceded by a per-node feature mask on the raw inputs. The masks that gate the computation are returned as the explanation.
+\end{enumerate}
+
+The two are trained with an objective that makes the reported explanation faithful to the prediction. The top-$k$ explanation alone must reproduce the prediction (sufficiency), and the inputs outside the explanation must not carry information about the label (necessity). A sparsity term keeps explanations short.
+
+We evaluate RTXGNN on the Elliptic Bitcoin dataset \citep{weber2019anti} with a temporal split (train on time steps 1--30, validate on 31--34, test on 35--49), on the T-Finance transaction network \citep{tang2022rethinking}, and on a synthetic benchmark in which laundering rings differ from decoy cycles only in the timing of their transactions. We compare with 16 baselines: feature-only models (logistic regression, random forest, XGBoost, MLP), general GNNs, temporal GNNs (EvolveGCN, TGAT, TGN, APAN) and fraud-specific GNNs (CARE-GNN, PC-GNN, GAS, FRAUDRE, SEFraud). All results are averaged over 10 seeds with paired significance tests.
+
+\subsection*{Summary of findings}
+
+On Elliptic, RTXGNN reaches a test F1 of \rtxFone{} and an AP of \rtxAP{}. This is the highest F1 among the graph neural networks, but the difference to the best other GNN (\bestgnnName, F1 \bestgnnFone) is small and not statistically significant after correction for multiple comparisons. The tree ensembles remain competitive: the random forest reaches F1 \rfFone{} and XGBoost \xgbFone{}. An F1 around 0.7 still means that, at the chosen threshold, RTXGNN misses \rtxMissPct\% of the illicit test transactions and \rtxFDRPct\% of its alerts are false (Section~\ref{subsec:operational}). All models, including the tree ensembles, fail after the dark-market shutdown at time step 43. Periodic retraining with a one-step label delay recovers part of the loss (Section~\ref{subsec:temporal}). The explanations of RTXGNN are more faithful than those of post-hoc explainers applied to the same model, come at no measurable extra inference cost, and recover the planted laundering transactions on the synthetic benchmark (Sections~\ref{subsec:explanations} and~\ref{subsec:synthetic}). End-to-end scoring and explanation of a single transaction, including neighbourhood sampling, takes \rtxLatBoneP{} ms at the 99th percentile on one CPU core (Section~\ref{subsec:latency}).
+
+\subsection*{Contributions}
+
+\begin{enumerate}
+\item \textbf{A self-explaining temporal GNN with a faithfulness objective.} RTXGNN gates message passing with learned feature, edge and node masks, and it is trained with explicit sufficiency and necessity terms. These terms rule out masks that are not used by the model. HRAPE uses only shift-invariant temporal information. We show that encoding the absolute timestamp, as in the first version of this work, degrades performance under a temporal split.
+\item \textbf{A reproducible, statistically controlled comparison.} We compare 16 baselines, including tree ensembles and temporal GNNs, under one protocol with 10 seeds and Holm-corrected paired tests, and we release all code. The evaluation includes ablations that replace HRAPE with Time2Vec, a comparison of mask sparsity with dropout and weight decay, stratified label-efficiency experiments with repeated subsets, a per-time-step drift analysis with a retraining strategy, and measured end-to-end CPU latency with tail percentiles.
+\item \textbf{An evaluation of explanations for decision support.} We measure the sufficiency and necessity of feature explanations at several sizes against saliency, Integrated Gradients, GNNExplainer, SEFraud's masks and random explanations. We also report class-wise results, stability and cost, test edge explanations against known ground truth on synthetic data, and discuss what is, and what is not, needed to use such explanations in regulated review processes.
+\end{enumerate}
+
+Section~\ref{sec:related} reviews related work. Section~\ref{sec:methodology} presents RTXGNN. Section~\ref{sec:setup} describes the datasets, baselines and protocol, and Section~\ref{sec:experiments} the results. Section~\ref{sec:discussion} discusses decision support, regulation, deployment and limitations, and Section~\ref{sec:conclusions} concludes.
