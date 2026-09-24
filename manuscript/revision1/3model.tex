@@ -8,33 +8,21 @@ This section formalises the problem (Section~\ref{subsec:problem}) and describes
 \begin{figure}[!t]
 \centering
 \resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-  font=\small,
-  box/.style={draw, rounded corners=2pt, align=center, inner sep=4pt, minimum height=9mm},
-  inp/.style={box, fill=gray!10},
-  hr/.style={box, fill=blue!8, draw=blue!60!black},
-  se/.style={box, fill=orange!10, draw=orange!70!black},
-  ou/.style={box, fill=green!8, draw=green!45!black},
-  lo/.style={box, fill=red!6, draw=red!60!black},
+\begin{tikzpicture}[font=\small,
+  bx/.style={draw, rounded corners=2pt, align=center, inner sep=4pt, minimum height=12mm},
   ar/.style={-{Latex[length=2mm]}, thick}]
-\node[inp] (x) at (0,0) {node features $\mathbf{x}_v$\\time $\tau_v$};
-\node[inp] (e) at (0,-2.0) {transactions $(u\!\to\!v, t_{uv})$\\both directions, type $r_{uv}$};
-\node[se] (fm) at (3.6,0) {feature mask\\$\mathbf{M}^{f}_v=\sigma(g_f(\mathbf{x}_v))$};
-\node[hr] (hr) at (3.6,-2.0) {HRAPE\\gap code $\mathbf{e}^{\tau}_{uv}$, recency $\rho_{uv}$,\\velocity $\mathbf{c}_v$};
-\node[box] (h0) at (7.3,0) {$\mathbf{h}^0_v=\mathrm{ReLU}(\mathbf{W}_{in}(\mathbf{x}_v\odot\mathbf{M}^f_v)$\\$\;+\mathbf{W}_c\mathbf{c}_v)$};
-\node[se, minimum width=4.6cm] (seal) at (7.3,-2.6) {SEAL layer $\ell=1,\dots,L$\\edge mask $M^{e}_{uv}$, node mask $M^{n}_u$\\attention $\alpha_{uv}$ with recency bias\\message gate $\alpha_{uv}M^e_{uv}M^n_u$};
-\node[ou] (pred) at (11.4,0) {prediction\\$\hat y_v=\sigma(\mathrm{MLP}[\mathbf{h}^0_v\|\mathbf{h}^L_v])$};
-\node[ou] (expl) at (11.4,-2.6) {explanation (same pass)\\top-$k$ features of $\mathbf{M}^f_v$\\top-$k$ edges of $M^e M^n \bar\alpha$};
-\node[lo, minimum width=11cm] (loss) at (6.2,-4.9) {training only: $\mathcal{L}=\mathcal{L}_{pred}+w(e)\,[\lambda_{suf}\mathcal{L}_{suf}+\lambda_{nec}\mathcal{L}_{nec}+\lambda_{sp}\mathcal{L}_{sp}]$\\
-$\mathcal{L}_{suf}$: keep only the top-$k$ explanation $\Rightarrow$ same prediction; \quad $\mathcal{L}_{nec}$: keep only its complement $\Rightarrow$ uninformative prediction};
-\draw[ar] (x) -- (fm); \draw[ar] (fm) -- (h0); \draw[ar] (e) -- (hr);
-\draw[ar] (hr.east) -- ++(0.35,0) |- (seal.west);
-\draw[ar] (hr.north) -- ++(0,0.5) -| ([xshift=-12mm]h0.south);
-\draw[ar] (h0) -- (seal); \draw[ar] (seal.east) -- ++(0.4,0) |- (pred.west);
-\draw[ar] (h0) -- (pred);
-\draw[ar] (seal) -- (expl); \draw[ar] (fm.north) -- ++(0,0.45) -| (expl.north east);
-\draw[ar, dashed] (expl.south) -- (expl.south |- loss.north);
-\draw[ar, dashed] (pred.south east) -- ++(0.5,0) |- (loss.east);
+\node[bx, fill=gray!10, text width=3.2cm] (x) at (0,0) {node features $\mathbf{x}_v$};
+\node[bx, fill=gray!10, text width=3.2cm] (e) at (0,-2.6) {transactions $(u\!\to\!v,\,t_{uv})$,\\both directions};
+\node[bx, fill=orange!10, text width=3.8cm] (fm) at (4.6,0) {\textbf{feature mask}\\$\mathbf{M}^{f}_v=\sigma(g_f(\mathbf{x}_v))$};
+\node[bx, fill=blue!8, text width=3.8cm] (hr) at (4.6,-2.6) {\textbf{HRAPE}: time-gap code $\mathbf{e}^{\tau}_{uv}$,\\recency $\rho_{uv}$, velocity $\mathbf{c}_v$};
+\node[bx, text width=5.6cm] (h0) at (10.5,0) {input embedding $\mathbf{h}^0_v$\\from $\mathbf{x}_v\odot\mathbf{M}^f_v$ and $\mathbf{c}_v$};
+\node[bx, fill=orange!10, text width=5.6cm] (seal) at (10.5,-2.6) {\textbf{SEAL layers} $\ell=1,\dots,L$: edge mask $M^e_{uv}$, node mask $M^n_u$, attention $\alpha_{uv}$ with recency bias; messages gated by $\alpha_{uv}M^e_{uv}M^n_u$};
+\node[bx, fill=green!8, text width=5.6cm, below=7mm of seal] (out) {\textbf{prediction} $\hat y_v$ from $[\mathbf{h}^0_v\,\|\,\mathbf{h}^L_v]$;\\\textbf{explanation} from the same pass: top-$k$ features of $\mathbf{M}^f_v$, top-$k$ edges of $M^eM^n\bar\alpha$};
+\node[bx, fill=red!6, text width=7.6cm, left=10mm of out] (loss) {\textbf{training only}: $\mathcal{L}=\mathcal{L}_{pred}+w(e)\,[\lambda_{suf}\mathcal{L}_{suf}+\lambda_{nec}\mathcal{L}_{nec}+\lambda_{sp}\mathcal{L}_{sp}]$\\$\mathcal{L}_{suf}$: top-$k$ explanation alone $\Rightarrow$ same prediction\\$\mathcal{L}_{nec}$: its complement alone $\Rightarrow$ uninformative prediction};
+\draw[ar] (x) -- (fm); \draw[ar] (fm) -- (h0); \draw[ar] (e) -- (hr); \draw[ar] (hr) -- (seal);
+\draw[ar] (h0) -- (seal); \draw[ar] (seal) -- (out);
+\draw[ar] (hr.north) -- (h0.south west);
+\draw[ar, dashed] (out) -- (loss);
 \end{tikzpicture}}
 \caption{Overview of RTXGNN. The masks that form the explanation are the gates that produce the prediction, so both come out of one forward pass. The objective in the bottom box is used only during training. It evaluates the model twice more, once on the top-$k$ explanation and once on its complement (Section~\ref{subsec:training}).}
 \label{fig:architecture}
@@ -93,9 +81,9 @@ where $g_n$ is a two-layer MLP and $\mathbf{A},\mathbf{B},\mathbf{T}\in\mathbb{R
 
 \paragraph{Attention with recency bias} With $H$ heads of size $D_k=D/H$,
 \begin{align}
-\mathbf{q}_v&=\mathbf{W}_Q\mathbf{h}^{\ell-1}_v,\quad
-\mathbf{k}_{uv}=\mathbf{W}_K\mathbf{h}^{\ell-1}_u+\mathbf{E}^{K}_{r_{uv}}+\mathbf{e}^{\tau}_{uv},\quad
-\mathbf{m}_{uv}=\mathbf{W}_V\mathbf{h}^{\ell-1}_u+\mathbf{E}^{V}_{r_{uv}}+\mathbf{e}^{\tau}_{uv},\nonumber\\
+\mathbf{q}_v&=\mathbf{W}_Q\mathbf{h}^{\ell-1}_v,\qquad
+\mathbf{k}_{uv}=\mathbf{W}_K\mathbf{h}^{\ell-1}_u+\mathbf{E}^{K}_{r_{uv}}+\mathbf{e}^{\tau}_{uv},\nonumber\\
+\mathbf{m}_{uv}&=\mathbf{W}_V\mathbf{h}^{\ell-1}_u+\mathbf{E}^{V}_{r_{uv}}+\mathbf{e}^{\tau}_{uv},\nonumber\\
 \alpha^{(i)}_{uv}&=\operatorname{softmax}_{u\in\mathcal{N}(v)}\Big(\mathbf{q}^{(i)\top}_v\mathbf{k}^{(i)}_{uv}/\sqrt{D_k}+\gamma\,\rho_{uv}\Big),\quad i=1,\dots,H,\label{eq:att}
 \end{align}
 where $^{(i)}$ selects the coordinates of head $i$ and $\gamma$ is learnable.

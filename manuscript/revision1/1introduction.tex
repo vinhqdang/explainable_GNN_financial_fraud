@@ -1,7 +1,7 @@
 \section*{List of abbreviations}
 
 \begin{center}
-\begin{longtable}{ll}
+\begin{longtable}{lp{0.68\textwidth}}
 \caption{Abbreviations used in this paper.}
 \label{tab:abbreviations} \\
 \hline
@@ -77,7 +77,7 @@ We evaluate RTXGNN on the Elliptic Bitcoin dataset \citep{weber2019anti} with a 
 
 \subsection*{Summary of findings}
 
-On Elliptic, RTXGNN reaches a test F1 of \rtxFone{} and an AP of \rtxAP{}. Among the twelve graph neural networks in our comparison, only GAS reaches the same F1 (\gasFone), and RTXGNN exceeds the self-explaining SEFraud by \deltaFOnesefraud{} F1 and \deltaAPsefraud{} AP. Gradient-boosted trees on the same engineered features remain the most accurate model (XGBoost, F1 \xgbFone), and the random forest reaches \rfFone. For decision support the ranking is what matters: the 500 highest-scored test transactions have a precision of \rtxPrecAtFive{} (Section~\ref{subsec:operational}). The explanations cost no extra inference time. Their sufficiency is close to that of Integrated Gradients, which is about one hundred times more expensive, and they are far more stable than GNNExplainer (Section~\ref{subsec:explanations}). On a synthetic benchmark with planted laundering rings, the most important transaction identified by RTXGNN is a ring transaction for \ringHitPct\% of the detected ring members (Section~\ref{subsec:synthetic}). All models fail after the dark-market shutdown in the Elliptic test period, and retraining with a one-step label delay recovers part of the loss (Section~\ref{subsec:temporal}). End-to-end scoring and explanation of a single transaction, including neighbourhood sampling, takes \rtxLatBoneP{} ms at the 99th percentile on one CPU core (Section~\ref{subsec:latency}).
+On Elliptic, RTXGNN reaches a test F1 of \rtxFone{} and an AP of \rtxAP{}. Among the twelve graph neural networks in our comparison, only GAS reaches the same F1 (\gasFone), and RTXGNN exceeds the self-explaining SEFraud (\deltaFOnesefraud{} F1, \deltaAPsefraud{} AP). Gradient-boosted trees on the same engineered features remain the most accurate model (XGBoost, F1 \xgbFone), and the random forest reaches \rfFone. For decision support the ranking is what matters: the 500 highest-scored test transactions have a precision of \rtxPrecAtFive{} (Section~\ref{subsec:operational}). The explanations cost no extra inference time. Their sufficiency is close to that of Integrated Gradients, which is about one hundred times more expensive, and they are far more stable than GNNExplainer (Section~\ref{subsec:explanations}). On a synthetic benchmark with planted laundering rings, the most important transaction identified by RTXGNN is a ring transaction for \ringHitPct\% of the detected ring members (Section~\ref{subsec:synthetic}). All models fail after the dark-market shutdown in the Elliptic test period, and retraining with a one-step label delay recovers part of the loss (Section~\ref{subsec:temporal}). End-to-end scoring and explanation of a single transaction, including neighbourhood sampling, takes \rtxLatBoneP{} ms at the 99th percentile on one CPU core (Section~\ref{subsec:latency}).
 
 \subsection*{Contributions}
 

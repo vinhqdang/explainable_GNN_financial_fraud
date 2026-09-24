@@ -12,12 +12,12 @@ Table~\ref{tab:main} reports the test results of all models over \nSeedsMain{} s
 \label{tab:main}
 \footnotesize
 \setlength{\tabcolsep}{4pt}
-\input{tables/main.tex}
+\begin{adjustbox}{max width=\textwidth}\input{tables/main.tex}\end{adjustbox}
 \end{table}
 
-RTXGNN reaches a test F1 of \rtxFone{}\,$\pm$\,\rtxFoneSd{} and an AP of \rtxAP{}. Among the twelve graph neural networks, only GAS obtains a practically identical F1 (\gasFone), and FRAUDRE and GAS obtain a practically identical AP (\fraudreAP{} and \gasAP). RTXGNN is ahead of all other GNNs on F1, including the general GNNs (GraphSAGE \sageFone, GCN \gcnFone, GAT \gatFone), the temporal GNNs (TGN \tgnFone, TGAT \tgatFone) and the fraud-specific models. In particular, RTXGNN improves on the other self-explaining model, SEFraud, by \deltaFOnesefraud{} F1 ($p=\prawFOnesefraud$, uncorrected) and \deltaAPsefraud{} AP ($p=\prawAPsefraud$). After Holm correction over the 16 comparisons, the F1 differences to the GNN baselines are no longer significant except for PC-GNN, while the AP differences to GCN, GAT, CARE-GNN and PC-GNN remain significant (Table~\ref{tab:main}).
+RTXGNN reaches a test F1 of \rtxFone{}\,$\pm$\,\rtxFoneSd{} and an AP of \rtxAP{}. Among the twelve graph neural networks, only GAS obtains a practically identical F1 (\gasFone), and FRAUDRE and GAS obtain a practically identical AP (\fraudreAP{} and \gasAP). RTXGNN is ahead of all other GNNs on F1, including the general GNNs (GraphSAGE \sageFone, GCN \gcnFone, GAT \gatFone), the temporal GNNs (TGN \tgnFone, TGAT \tgatFone) and the fraud-specific models. In particular, RTXGNN improves on the other self-explaining model, SEFraud (\deltaFOnesefraud{} F1, $p=\prawFOnesefraud$ uncorrected; \deltaAPsefraud{} AP, $p=\prawAPsefraud$). After Holm correction over the 16 comparisons, the F1 differences to the GNN baselines are no longer significant except for PC-GNN, while the AP differences to GCN, GAT, CARE-GNN and PC-GNN remain significant (Table~\ref{tab:main}).
 
-Two feature-only models remain strong competitors on Elliptic's engineered features. XGBoost obtains the highest F1 (\xgbFone) and AP (\xgbAP), significantly above RTXGNN. The random forest reaches F1 \rfFone{} and the same AP as RTXGNN (\rfAP), but its F1 varies considerably with the seed-dependent threshold ($\pm$0.05). The strength of tree ensembles on these features agrees with \citet{weber2019anti} and with the general finding of \citet{grinsztajn2022tree}. The Elliptic features already contain 72 aggregates of the one-hop neighbourhood, so much of the graph information is available to a feature-only model. The trees do not produce explanations over the relations between transactions, which is the purpose of RTXGNN. The MLP, which sees the same features without message passing, is \deltaFOnemlp{} F1 below RTXGNN.
+Two feature-only models remain strong competitors on Elliptic's engineered features. XGBoost obtains the highest F1 (\xgbFone) and AP (\xgbAP), significantly above RTXGNN. The random forest reaches F1 \rfFone{} and the same AP as RTXGNN (\rfAP), but its F1 varies considerably with the seed-dependent threshold ($\pm$0.05). The strength of tree ensembles on these features agrees with \citet{weber2019anti} and with the general finding of \citet{grinsztajn2022tree}. The Elliptic features already contain 72 aggregates of the one-hop neighbourhood, so much of the graph information is available to a feature-only model. The trees do not produce explanations over the relations between transactions, which is the purpose of RTXGNN. RTXGNN is clearly ahead of the MLP, which sees the same features without message passing (\deltaFOnemlp{} F1).
 
 EvolveGCN-O is the weakest graph model (\evolvegcnFone). Its recurrent weight evolution has to be carried from the training period through all test snapshots without supervision. Because no transaction appears in more than one snapshot, the model cannot exploit the node-level continuity for which it was designed. The continuous-time models TGN and TGAT perform similarly to static GNNs, for the reasons discussed in Section~\ref{sec:related}.
 
@@ -30,7 +30,7 @@ EvolveGCN-O is the weakest graph model (\evolvegcnFone). Its recurrent weight ev
 \caption{Operational view of the test period (\nTestIllicit{} illicit among \nTest{} labelled transactions), mean over the seeds. Left: number of alerts, missed illicit transactions and false alerts at the validation-chosen threshold. Right: precision among the top-$K$ scored test transactions for alert budgets $K$.}
 \label{tab:operational}
 \footnotesize
-\input{tables/operational.tex}
+\begin{adjustbox}{max width=\textwidth}\input{tables/operational.tex}\end{adjustbox}
 \end{table}
 
 An F1 around 0.7 still means that errors are frequent. At the validation-chosen threshold, RTXGNN raises on average \rtxAlerts{} alerts in the test period, misses \rtxMissed{} of the \nTestIllicit{} illicit transactions (\rtxMissPct\%), and \rtxFalse{} of its alerts (\rtxFDRPct\%) concern licit transactions (Table~\ref{tab:operational}). As a stand-alone decision rule this would not be acceptable. The ranking, however, is highly informative for review queues with limited capacity: among the 500 highest-scored test transactions, \rtxPrecAtFive{} of those flagged by RTXGNN are illicit, and among the top 1,000 the proportion is \rtxPrecAtThousand. The differences between the strongest models appear mainly at the level of the automatic threshold, where XGBoost produces fewer false alerts. For a decision maker, the relevant choice is therefore the size of the review queue. The threshold should be set by the capacity of the investigation team and by the relative cost of a missed case and a false alert, not by maximising F1.
@@ -43,7 +43,7 @@ An F1 around 0.7 still means that errors are frequent. At the validation-chosen 
 \caption{Ablation of RTXGNN on Elliptic (mean $\pm$ standard deviation; $\Delta$F1 is the mean paired difference to the full model over the common seeds, with the $p$-value of a paired $t$-test). Variants listed with 3 seeds are secondary.}
 \label{tab:ablation}
 \footnotesize
-\input{tables/ablation.tex}
+\begin{adjustbox}{max width=\textwidth}\input{tables/ablation.tex}\end{adjustbox}
 \end{table}
 
 Table~\ref{tab:ablation} isolates the components of RTXGNN. The primary study uses the same CPU runs and seeds 0--4 as Table~\ref{tab:main}. The secondary study adds further variants with 3 seeds, each compared with a reference model trained on the same hardware.
@@ -62,7 +62,7 @@ Table~\ref{tab:ablation} isolates the components of RTXGNN. The primary study us
 \caption{Mask sparsity compared with dropout and weight decay (Elliptic; notation as in Table~\ref{tab:ablation}).}
 \label{tab:regularisation}
 \footnotesize
-\input{tables/regularisation.tex}
+\begin{adjustbox}{max width=\textwidth}\input{tables/regularisation.tex}\end{adjustbox}
 \end{table}
 
 Table~\ref{tab:regularisation} compares the mask sparsity term with conventional regularisers. With the default weight $\lambda_{sp}=0.05$, the model performs like models trained without the sparsity term but with dropout 0, dropout 0.5 or weight decay $10^{-3}$. All differences are at most 0.003 F1 in the secondary study and 0.021 in the primary study, and none is significant. A four times larger weight ($\lambda_{sp}=0.2$) lowers F1 by \regGsparsityxFourDelta{} ($p=\regGsparsityxFourP$). Mask sparsity is therefore not a better regulariser than the standard ones, but it is not a harmful one either at a moderate weight. Its purpose is to keep explanations selective (Section~\ref{subsec:cases}).
@@ -72,7 +72,7 @@ Table~\ref{tab:regularisation} compares the mask sparsity term with conventional
 \caption{Sensitivity to the hidden size $D$ and the number of SEAL layers $L$ (secondary study, 3 seeds, GPU; notation as in Table~\ref{tab:ablation}).}
 \label{tab:sensitivity}
 \footnotesize
-\input{tables/sensitivity.tex}
+\begin{adjustbox}{max width=\textwidth}\input{tables/sensitivity.tex}\end{adjustbox}
 \end{table}
 
 \subsection{Temporal behaviour, drift and retraining}
@@ -84,7 +84,7 @@ Table~\ref{tab:regularisation} compares the mask sparsity term with conventional
 \label{tab:temporal}
 \footnotesize
 \setlength{\tabcolsep}{3.5pt}
-\input{tables/temporal.tex}
+\begin{adjustbox}{max width=\textwidth}\input{tables/temporal.tex}\end{adjustbox}
 \end{table}
 
 \begin{figure}[!t]
@@ -109,7 +109,7 @@ This explains why a near-zero F1 in the late steps is compatible with a pooled t
 \label{tab:label_efficiency}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
-\input{tables/label_efficiency.tex}
+\begin{adjustbox}{max width=\textwidth}\input{tables/label_efficiency.tex}\end{adjustbox}
 \end{table}
 
 \begin{figure}[!t]
@@ -130,7 +130,7 @@ Table~\ref{tab:label_efficiency} and Figure~\ref{fig:label} report the effect of
 \label{tab:explanations}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
-\input{tables/explanations.tex}
+\begin{adjustbox}{max width=\textwidth}\input{tables/explanations.tex}\end{adjustbox}
 \end{table}
 
 \begin{table}[!t]
@@ -138,7 +138,7 @@ Table~\ref{tab:label_efficiency} and Figure~\ref{fig:label} report the effect of
 \caption{Class-wise faithfulness at $k=10$ (illicit and licit test transactions).}
 \label{tab:explanations_class}
 \footnotesize
-\input{tables/explanations_class.tex}
+\begin{adjustbox}{max width=\textwidth}\input{tables/explanations_class.tex}\end{adjustbox}
 \end{table}
 
 \begin{figure}[!t]
@@ -167,7 +167,7 @@ In summary, SEAL provides explanations that are sufficient, stable and essential
 \label{tab:synthetic}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
-\input{tables/synthetic.tex}
+\begin{adjustbox}{max width=\textwidth}\input{tables/synthetic.tex}\end{adjustbox}
 \end{table}
 
 \begin{table}[!t]
@@ -175,7 +175,7 @@ In summary, SEAL provides explanations that are sufficient, stable and essential
 \caption{Ground-truth evaluation of edge explanations on the synthetic benchmark: AUC of the edge scores for identifying the two ring transactions among the incoming edges of each correctly detected ring member (mean over graphs 0--2; up to 100 accounts per graph).}
 \label{tab:synthetic_edges}
 \footnotesize
-\input{tables/synthetic_edges.tex}
+\begin{adjustbox}{max width=\textwidth}\input{tables/synthetic_edges.tex}\end{adjustbox}
 \end{table}
 
 \begin{figure}[!t]
@@ -199,7 +199,7 @@ The temporal mechanism helps where timing matters. In the default setting, RTXGN
 \caption{Test results on T-Finance (GADBench splits 0--4, 40/20/40; mean $\pm$ s.d.). No timestamps are available, so HRAPE is disabled and temporal baselines are not applicable.}
 \label{tab:tfinance}
 \footnotesize
-\input{tables/tfinance.tex}
+\begin{adjustbox}{max width=\textwidth}\input{tables/tfinance.tex}\end{adjustbox}
 \end{table}
 
 T-Finance is a transaction network between the accounts of a financial company, with account-level features and expert labels. Its graph is far denser than Elliptic's, and it has no engineered neighbourhood aggregates. Table~\ref{tab:tfinance} shows that the picture differs from Elliptic accordingly. All graph neural networks clearly outperform the feature-only models: the best tree ensemble reaches F1 \tfxgbFone{} and AP \tfxgbAP, while the GNNs reach F1 between \tfgcnFone{} and \tfsageFone{}. RTXGNN, which runs here without its temporal component, is among the best models (F1 \tfrtxgnnFone, AUC \tfrtxgnnAUC, AP \tfrtxgnnAP). It is within about one point of F1 of the best model (GraphSAGE, F1 \tfsageFone, AP \tfsageAP) and on par with FRAUDRE (\tffraudreFone) and the self-explaining SEFraud (\tfsefraudFone). SEAL's explanation mechanism therefore transfers to a second real financial network, with different entities, features and label source, without loss of accuracy.
@@ -213,7 +213,7 @@ T-Finance is a transaction network between the accounts of a financial company, 
 \label{tab:latency}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
-\input{tables/latency.tex}
+\begin{adjustbox}{max width=\textwidth}\input{tables/latency.tex}\end{adjustbox}
 \end{table}
 
 Table~\ref{tab:latency} reports the end-to-end latency of scoring requests on one CPU core. A request samples the 2-hop neighbourhood of its transactions, builds the subgraph, runs the model and returns the explanation. For a single transaction, RTXGNN needs \rtxLatBoneMed{} ms at the median and \rtxLatBoneP{} ms at the 99th percentile. Of this, \rtxLatBoneSmp{} ms is neighbourhood sampling, \rtxLatBoneFwd{} ms the forward pass and \rtxLatBoneExp{} ms the extraction of the explanation from the masks. The explanation therefore adds less than a millisecond. Producing the explanation with GNNExplainer instead raises the median latency to \rtxgnnexLatBoneMed{} ms and the 99th percentile to \rtxgnnexLatBoneP{} ms, two orders of magnitude more. For batches of 256 transactions, a single core scores and explains \rtxLatBtwofiftysixTps{} transactions per second (\rtxLatBtwofiftysixMed{} ms per batch at the median). RTXGNN is slower than the plain GNNs (GAT: \gatLatBoneMed{} ms for one transaction) because of its mask generators and its wider messages, but it stays far below the 10--100\,ms budgets of online screening. Using four threads changes the single-transaction latency very little (\rtxLatTfourBoneMed{} ms at the median), because the computation is too small to parallelise, and improves the throughput for large batches (\rtxLatTfourBtwofiftysixTps{} transactions per second). The peak resident memory of the serving process, including the complete in-memory test graph, was \peakRss{} MB.
@@ -228,7 +228,7 @@ These figures do not include the retrieval of the neighbourhood from a productio
 \caption{Explanations of four Elliptic test transactions by RTXGNN (seed 0). Open features: number of features with mask value above 0.5 (in parentheses: local ones). The first five open features are listed in the order of the mask generator's pre-sigmoid score; groups: L = local, A = aggregated (the only semantics documented for the anonymised features). Score in parentheses: after removing these five features. Neighbours: the most important incoming and outgoing transactions (edge importance $I_{uv}$) with their labels.}
 \label{tab:cases}
 \footnotesize
-\input{tables/case_studies.tex}
+\begin{adjustbox}{max width=\textwidth}\input{tables/case_studies.tex}\end{adjustbox}
 \end{table}
 
 Table~\ref{tab:cases} shows the explanations of four test transactions: two correctly detected illicit transactions and one correctly classified licit transaction from step 42, and one illicit transaction from step 44 that RTXGNN misses. Because Elliptic's features are anonymised, we report feature indices together with their documented group (local or aggregated) and do not attach any further meaning to them.

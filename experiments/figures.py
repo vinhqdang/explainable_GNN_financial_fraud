@@ -59,7 +59,7 @@ def temporal():
     ax.text(42.6, 0.95, "dark-market\nshutdown", fontsize=7, va="top")
     ax.set_xlabel("test time step"); ax.set_ylabel("F1 (illicit class)"); ax.set_ylim(0, 1)
     ax.set_xticks(steps)
-    ax.legend(fontsize=7, ncol=2, loc="lower left", frameon=False)
+    ax.legend(fontsize=6.5, ncol=1, loc="upper right", frameon=True, framealpha=0.9)
     fig.savefig(os.path.join(FIG, "temporal.pdf")); plt.close(fig)
 
 

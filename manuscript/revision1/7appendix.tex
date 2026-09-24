@@ -9,7 +9,7 @@
 \label{tab:elliptic_steps}
 \footnotesize
 \setlength{\tabcolsep}{4pt}
-\input{tables/elliptic_steps.tex}
+\begin{adjustbox}{max width=\textwidth}\input{tables/elliptic_steps.tex}\end{adjustbox}
 \end{table}
 
 \section{Adaptation of the baselines}
@@ -35,8 +35,8 @@ All baselines use the shared protocol of Section~\ref{subsec:protocol} (hidden s
 
 \begin{table}[!ht]
 \centering
-\caption{Test results on Elliptic (seed 0) with raw features versus quantile-normalised features (Section~\ref{sec:setup}). All other settings are identical.}
+\caption{Test results on Elliptic (seed 0) with raw features versus quantile-normalised features (Section~\ref{sec:setup}). All other settings are identical (the raw-feature runs were trained on the GPU machine).}
 \label{tab:preprocessing}
 \footnotesize
-\input{tables/preprocessing.tex}
+\begin{adjustbox}{max width=\textwidth}\input{tables/preprocessing.tex}\end{adjustbox}
 \end{table}
