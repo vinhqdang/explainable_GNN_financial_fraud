@@ -50,7 +50,7 @@ Given the labelled nodes observed up to a cut-off time, the task is to estimate 
 \subsection{Hierarchical Recency-Aware Positional Encoding (HRAPE)}
 \label{subsec:hrape}
 
-HRAPE supplies three kinds of temporal information to SEAL. In contrast to the first version of this work, it depends only on time \emph{differences} and on counts in trailing windows, never on the absolute timestamp. A model evaluated on future time steps then never sees an out-of-range time value. Section~\ref{subsec:ablation} shows that encoding the absolute timestamp, as the first version did, reduces test performance markedly under the temporal split.
+HRAPE supplies three kinds of temporal information to SEAL. It depends only on time \emph{differences} and on counts in trailing windows, never on the absolute timestamp, so a model evaluated on future time steps never sees an out-of-range time value. Section~\ref{subsec:ablation} shows that additionally encoding the absolute timestamp reduces test performance under the temporal split.
 
 \paragraph{Multi-scale gap encoding} For a set of periods $P_1,\dots,P_S$ (in the time unit of the data) the gap of an edge is encoded as
 \begin{equation}
@@ -72,7 +72,7 @@ with $\mathbf{W}_{\Delta}\in\mathbb{R}^{D\times 2S}$ learnable. We use $P=(2,4,1
 \end{equation}
 with $w=(1,2,4)$ steps for Elliptic and $(1,7,30)$ days for the synthetic data. The velocity vector enters the input embedding (Eq.~\ref{eq:h0}).
 
-\paragraph{What HRAPE can and cannot do on Elliptic} In Elliptic every edge connects two transactions of the same time step and each transaction appears in exactly one time step \citep{weber2019anti}. Hence $\Delta_{uv}=0$ for all edges: the gap code is a constant, $\rho_{uv}=1$, and the velocity vector reduces to the node's in-degree within its time step. On Elliptic HRAPE therefore contributes little beyond a degree feature, and our ablation (Section~\ref{subsec:ablation}) confirms this. The temporal mechanisms become informative only on data with continuous timestamps. We test this on the synthetic benchmark (Section~\ref{subsec:synthetic}), where laundering rings differ from decoy cycles only in the timing of their hops. The hour-of-day, day-of-week and inter-transaction velocity features described in the first version of this manuscript cannot be computed from the public Elliptic data and have been removed.
+\paragraph{What HRAPE can and cannot do on Elliptic} In Elliptic every edge connects two transactions of the same time step and each transaction appears in exactly one time step \citep{weber2019anti}. Hence $\Delta_{uv}=0$ for all edges: the gap code is a constant, $\rho_{uv}=1$, and the velocity vector reduces to the node's in-degree within its time step. On Elliptic HRAPE therefore contributes little beyond a degree feature, and our ablation (Section~\ref{subsec:ablation}) confirms this. The temporal mechanisms become informative only on data with continuous timestamps. We test this on the synthetic benchmark (Section~\ref{subsec:synthetic}), where laundering rings differ from decoy cycles only in the timing of their hops. Hour-of-day or day-of-week encodings cannot be computed from the public Elliptic data and are therefore not used.
 
 \subsection{Self-Explainable Aggregation Layer (SEAL)}
 \label{subsec:seal}
@@ -82,7 +82,7 @@ with $w=(1,2,4)$ steps for Elliptic and $(1,7,30)$ days for the synthetic data. 
 \mathbf{M}^{f}_v&=\sigma\big(g_f(\mathbf{x}_v)+2\big)\in(0,1)^{d},\label{eq:featmask}\\
 \mathbf{h}^{0}_v&=\mathrm{ReLU}\big(\mathbf{W}_{in}(\mathbf{x}_v\odot\mathbf{M}^{f}_v)+\mathbf{W}_{c}\mathbf{c}_v\big).\label{eq:h0}
 \end{align}
-The constant $+2$ initialises the mask close to one, so that training starts from the unmasked model. Unlike the first version, the feature mask is applied only to the raw input features, where it is interpretable as an attribution over named (or at least identifiable) inputs, and not to hidden representations.
+The constant $+2$ initialises the mask close to one, so that training starts from the unmasked model. The feature mask is applied to the raw input features, where it is an attribution over identifiable inputs, and not to hidden representations.
 
 \paragraph{Masks of layer $\ell$} Given $\mathbf{h}^{\ell-1}$, each SEAL layer computes a node (source) mask and an edge mask,
 \begin{align}
@@ -127,7 +127,7 @@ with $\bar\alpha_{uv}$ the head-averaged attention of the last layer. The first 
 \mathcal{L}_{pred}=\frac{1}{|\mathcal{V}_{tr}|}\sum_{v\in\mathcal{V}_{tr}}\Big[\tfrac{y_v}{2\pi}\,\ell(\hat y_v,1)+\tfrac{1-y_v}{2(1-\pi)}\,\ell(\hat y_v,0)\Big],
 \label{eq:pred_loss}
 \end{equation}
-where $\ell$ is the log-loss and $\pi$ the fraction of illicit labels among the training nodes $\mathcal{V}_{tr}$. The focal loss of the first version is kept as an ablation. Its values are two orders of magnitude smaller than those of the explanation terms below, which made the weighting of the objective fragile.
+where $\ell$ is the log-loss and $\pi$ the fraction of illicit labels among the training nodes $\mathcal{V}_{tr}$. Focal loss \citep{lin2017focal} is evaluated as an ablation. Its values are two orders of magnitude smaller than those of the explanation terms below, which makes the weighting of the objective fragile.
 
 \paragraph{Explanation views} Let $\mathrm{top}_k(\cdot)$ be the indicator of the $k$ largest entries: the $k_f$ largest features of $\mathbf{M}^f_v$, and for every node and layer its $k_e$ incoming edges with the largest $M^e_{uv}$. From the soft masks we build two hard views, using the straight-through estimator $\mathbf{M}+(\mathrm{top}_k(\mathbf{M})-\mathbf{M})_{\text{no-grad}}$ so that gradients reach the mask generators:
 \begin{itemize}
@@ -143,7 +143,7 @@ Running the model on the two views gives $\hat y^{S}_v$ and $\hat y^{C}_v$ ($M^n
 \end{align}
 where $\operatorname{sg}$ stops the gradient. $\mathcal{L}_{suf}$ asks that the top-$k$ explanation alone reproduce the model's prediction. $\mathcal{L}_{nec}$ asks that the remaining inputs alone carry no information about the label, i.e.\ that the prediction on the complement fall back to the class prior. These are the factual and counterfactual criteria of \citet{tan2022counterfactual}, and they match the Fid$^-$ and Fid$^+$ metrics used in evaluation \citep{yuan2021subgraphx,amara2022graphframex}.
 
-\paragraph{Why the objective cannot be met by ignoring the masks} The first version minimised $\mathrm{KL}(f(\mathcal{G})\Vert f(\mathcal{G}_{masked}))$ with soft masks only, as Reviewer~1 pointed out. That objective is minimised trivially by masks that are all close to one, or by a model that is insensitive to the masks, and it says nothing about whether the masks are faithful. The revised objective rules out both degenerate solutions:
+\paragraph{Why the objective cannot be met by ignoring the masks} A fidelity loss of the form $\mathrm{KL}(f(\mathcal{G})\Vert f(\mathcal{G}_{masked}))$ with soft masks alone is minimised trivially by masks that are all close to one, or by a model that is insensitive to the masks, and says nothing about whether the masks are faithful. Our objective rules out both degenerate solutions:
 (i) the views are \emph{hard}: in $S$ all but $k_f$ of the $d$ features and all but $k_e$ incoming edges are removed, so $\mathcal{L}_{suf}$ can only be small if the selected elements actually carry the prediction;
 (ii) a model that ignores the masks predicts the same value on the complement $C$ as on the full input, which incurs $\mathcal{L}_{nec}>0$ for every node whose prediction differs from the prior;
 (iii) a mask that is uninformative about importance (for instance uniform) produces a random top-$k$ selection, for which both terms are large unless the model does not depend on the inputs at all, and that case is excluded by $\mathcal{L}_{pred}$.
@@ -156,7 +156,7 @@ The objective uses only the model's own predictions and the class prior, never t
 \end{equation}
 where the bar denotes the mean over all entries. This is ordinary $L_1$ regularisation of auxiliary gate activations. We do not claim it is a new form of regularisation, and Section~\ref{subsec:regularisation} compares it with dropout and weight decay.
 
-\paragraph{Removed term} The first version contained a temporal consistency loss that rewarded high temporal weights on edges incident to fraudulent nodes and low weights elsewhere. Because it supervised an internal gate directly with training labels, it could leak label information into the explanation and was not justified. It has been removed.
+\paragraph{No label supervision of the gates} We deliberately do not supervise any mask or temporal gate with labels (for example by rewarding high gates on edges incident to fraudulent nodes). Such a term would leak label information into what is presented as an explanation.
 
 \paragraph{Total objective and curriculum}
 \begin{equation}
@@ -223,4 +223,4 @@ At inference time (Algorithm~\ref{alg:inference}) a request consists of one or m
 
 \paragraph{Complexity} A SEAL layer costs $\mathcal{O}(|\mathcal{V}|D^2+|\mathcal{E}|D)$: the projections and mask MLPs are node-level matrix products, and each edge requires $\mathcal{O}(D)$ operations for its attention score, gate and message. Feature-mask generation adds $\mathcal{O}(|\mathcal{V}|dD)$. The explanation adds only a top-$k$ selection at inference time. During training each epoch performs three forward passes (full, $S$ and $C$), so an epoch costs about three times as much as for a SEAL network without the explanation objective.
 
-\paragraph{Implementation} RTXGNN is implemented in PyTorch \citep{paszke2019pytorch} with PyTorch Geometric \citep{fey2019fast}. We use $L=2$ SEAL layers, hidden size $D=64$, $H=4$ heads, dropout 0.2, at most 300 epochs, early stopping with patience $Q=40$ epochs on validation average precision (evaluated every second epoch), and gradient clipping at norm 1. The configuration reported in the first version ($L=3$, $D=128$, FP16 training on an A100 GPU, 4-hop neighbourhood sampling) does not correspond to the released code; all experiments of this revision were run on CPU with the configuration above (hardware in Section~\ref{subsec:protocol}).
+\paragraph{Implementation} RTXGNN is implemented in PyTorch \citep{paszke2019pytorch} with PyTorch Geometric \citep{fey2019fast}. We use $L=2$ SEAL layers, hidden size $D=64$, $H=4$ heads, dropout 0.2, at most 300 epochs, early stopping with patience $Q=40$ epochs on validation average precision (evaluated every second epoch), and gradient clipping at norm 1. Hardware is described in Section~\ref{subsec:protocol}.
