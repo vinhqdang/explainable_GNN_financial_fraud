@@ -17,6 +17,7 @@ import torch
 
 from common import slot, RESULTS, TABULAR, elliptic, parse_seeds, append_jsonl, done_keys
 from rtxgnn.graph import split_regions
+from rtxgnn.device import to_dev
 from rtxgnn.train import build, train_model, metrics, set_seed, best_threshold
 from rtxgnn.tabular import fit_tabular, predict
 
@@ -49,11 +50,12 @@ if __name__ == "__main__":
                 set_seed(seed * 100 + t)
                 d.train_mask, d.val_mask, d.test_mask = masks_for(d, t)
                 dtr, dev = split_regions(d)
+                dtr, dev = to_dev(dtr), to_dev(dev)
                 t0 = time.time()
                 if name in TABULAR:
-                    m = fit_tabular(name, dtr.x_raw[dtr.train_mask].numpy(), dtr.y[dtr.train_mask].numpy(), seed)
-                    p = predict(m, dev.x_raw.numpy())
-                    thr = best_threshold(p[dev.val_mask.numpy()], dev.y[dev.val_mask].numpy())
+                    m = fit_tabular(name, dtr.x_raw[dtr.train_mask].cpu().numpy(), dtr.y[dtr.train_mask].cpu().numpy(), seed)
+                    p = predict(m, dev.x_raw.cpu().numpy())
+                    thr = best_threshold(p[dev.val_mask.cpu().numpy()], dev.y[dev.val_mask].cpu().numpy())
                 else:
                     model = build(name, d.x.size(1))
                     lock = slot() if name == "rtxgnn" else open(os.devnull)
@@ -66,10 +68,10 @@ if __name__ == "__main__":
                                                 eval_every=2 if name == "rtxgnn" else 1)
                     prev = copy.deepcopy(model.state_dict())
                     lock.__exit__(None, None, None)
-                te = dev.test_mask.numpy()
+                te = dev.test_mask.cpu().numpy()
                 row = dict(model=name, seed=seed, step=t, time=time.time() - t0, thr=thr,
                            n=int(te.sum()), illicit=int(dev.y[dev.test_mask].sum()),
-                           test=metrics(p[te], dev.y[dev.test_mask].numpy(), thr))
+                           test=metrics(p[te], dev.y[dev.test_mask].cpu().numpy(), thr))
                 append_jsonl(out, row)
                 print(name, seed, t, {k: round(v, 4) for k, v in row["test"].items()}, flush=True)
             d.train_mask, d.val_mask, d.test_mask = orig

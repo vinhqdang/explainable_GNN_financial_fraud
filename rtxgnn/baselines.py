@@ -64,7 +64,7 @@ def time_encode(dt, w, b):
 class TimeEnc(nn.Module):
     def __init__(self, dim):
         super().__init__()
-        self.w = nn.Parameter(torch.from_numpy(1 / 10 ** torch.linspace(0, 9, dim).numpy()).float())
+        self.w = nn.Parameter(torch.from_numpy(1 / 10 ** torch.linspace(0, 9, dim).cpu().numpy()).float())
         self.b = nn.Parameter(torch.zeros(dim))
 
     def forward(self, dt):

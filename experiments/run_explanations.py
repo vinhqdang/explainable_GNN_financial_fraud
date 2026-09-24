@@ -28,7 +28,7 @@ VARIANT_KW = {"rtxgnn_no_fidelity": {}, "rtxgnn_no_sparsity": {}}
 
 def load(name, seed, in_dim):
     m = build(name.split("_")[0], in_dim, **VARIANT_KW.get(name, {}))
-    m.load_state_dict(torch.load(os.path.join(RESULTS, "ckpt", f"{name}_s{seed}.pt")))
+    m.load_state_dict(torch.load(os.path.join(RESULTS, "ckpt", f"{name}_s{seed}.pt"), map_location="cpu"))
     m.eval()
     return m
 
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     ill = torch.nonzero(dev.test_mask & (dev.y == 1)).squeeze(-1)
     lic = torch.nonzero(dev.test_mask & (dev.y == 0)).squeeze(-1)
     targets = torch.cat([ill[torch.randperm(len(ill), generator=g)[:a.n]], lic[torch.randperm(len(lic), generator=g)[:a.n]]])
-    ytrue = dev.y[targets].numpy()
+    ytrue = dev.y[targets].cpu().numpy()
     b, pos = disjoint_batch(dev, targets)
     out_path = os.path.join(RESULTS, "explanations.jsonl")
     lo, hi = [int(s) for s in a.seeds.split("-")]
@@ -99,4 +99,4 @@ if __name__ == "__main__":
     rnd = [float(jaccard_topk(torch.rand(len(pos), b.x.size(1)), torch.rand(len(pos), b.x.size(1))).mean()) for _ in range(10)]
     with open(os.path.join(RESULTS, "explanations_cross_seed.json"), "w") as f:
         json.dump(dict(seal_mean=float(np.mean(agree)), seal_std=float(np.std(agree)), random_mean=float(np.mean(rnd))), f)
-    np.save(os.path.join(RESULTS, "explanation_targets.npy"), dev.orig_id[targets].numpy())
+    np.save(os.path.join(RESULTS, "explanation_targets.npy"), dev.orig_id[targets].cpu().numpy())

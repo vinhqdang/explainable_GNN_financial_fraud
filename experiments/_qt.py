@@ -5,9 +5,9 @@ from rtxgnn.graph import split_regions
 from rtxgnn.train import build, train_model, evaluate, set_seed
 from sklearn.preprocessing import QuantileTransformer
 d = elliptic()
-tr = (d.t <= 30).numpy()
+tr = (d.t <= 30).cpu().numpy()
 for mode in sys.argv[1].split(','):
-    x = d.x.numpy().copy()
+    x = d.x.cpu().numpy().copy()
     if mode == 'qt':
         q = QuantileTransformer(output_distribution='normal', n_quantiles=1000, subsample=200000, random_state=0).fit(x[tr])
         x = q.transform(x)

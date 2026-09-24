@@ -13,6 +13,7 @@ import torch
 
 from common import slot, RESULTS, TABULAR, elliptic, parse_seeds, append_jsonl, done_keys, n_params
 from rtxgnn.graph import split_regions
+from rtxgnn.device import to_dev
 from rtxgnn.train import build, train_model, evaluate, per_step, set_seed, metrics, best_threshold
 from rtxgnn.tabular import fit_tabular, predict
 
@@ -46,9 +47,9 @@ def run_one(name, seed, d, dtr, dev, out_path, save_pred=True, epochs=300, patie
     t0 = time.time()
     test_steps = list(range(35, 50))
     if name in TABULAR:
-        m = fit_tabular(name, dtr.x_raw[dtr.train_mask].numpy(), dtr.y[dtr.train_mask].numpy(), seed)
-        p = predict(m, dev.x_raw.numpy())
-        thr = best_threshold(p[dev.val_mask.numpy()], dev.y[dev.val_mask].numpy())
+        m = fit_tabular(name, dtr.x_raw[dtr.train_mask].cpu().numpy(), dtr.y[dtr.train_mask].cpu().numpy(), seed)
+        p = predict(m, dev.x_raw.cpu().numpy())
+        thr = best_threshold(p[dev.val_mask.cpu().numpy()], dev.y[dev.val_mask].cpu().numpy())
         info = dict(epochs=None, params=None)
     else:
         base, _, var = name.partition(":")
@@ -90,7 +91,8 @@ if __name__ == "__main__":
     if a.raw:
         d.x = d.x_raw.clone()
     dtr, dev = split_regions(d)
-    np.save(os.path.join(RESULTS, "elliptic_eval_ids.npy"), dev.orig_id.numpy())
+    dtr, dev = to_dev(dtr), to_dev(dev)
+    np.save(os.path.join(RESULTS, "elliptic_eval_ids.npy"), dev.orig_id.cpu().numpy())
     done = done_keys(out)
     run_one.no_ckpt = a.raw
     for seed in parse_seeds(a.seeds):

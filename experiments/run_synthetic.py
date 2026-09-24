@@ -18,6 +18,7 @@ from sklearn.metrics import roc_auc_score
 
 from common import RESULTS, TABULAR, append_jsonl, done_keys, parse_seeds
 from rtxgnn.synthetic import generate, prepare_synthetic
+from rtxgnn.device import to_dev
 from rtxgnn.train import build, train_model, evaluate, set_seed, best_threshold
 from rtxgnn.tabular import fit_tabular, predict
 from rtxgnn.explain import attr_gnnexplainer, disjoint_batch
@@ -42,13 +43,13 @@ def edge_auc(model, d, targets):
         out = model(d)
     last = out["layers"][-1]
     s, t = d.ei_dir
-    imp = (last["edge"] * last["node"][s] * last["att"]).numpy()
-    att = last["att"].numpy()
+    imp = (last["edge"] * last["node"][s] * last["att"]).cpu().numpy()
+    att = last["att"].cpu().numpy()
     res = {"seal": [], "attention": [], "random": []}
     rng = np.random.default_rng(0)
     for v in targets.tolist():
-        inc = np.nonzero(t.numpy() == v)[0]
-        gt = d.gt_edge[inc].numpy()
+        inc = np.nonzero(t.cpu().numpy() == v)[0]
+        gt = d.gt_edge[inc].cpu().numpy()
         if gt.min() == gt.max():
             continue
         res["seal"].append(roc_auc_score(gt, imp[inc]))
@@ -58,9 +59,9 @@ def edge_auc(model, d, targets):
     b, pos = disjoint_batch(d, targets)
     cls = torch.ones(len(pos), dtype=torch.long)
     _, em = attr_gnnexplainer(model, b, pos, cls)
-    gtb = d.gt_edge[b.edge_ids].numpy()
-    em = em.numpy()
-    bt = b.ei_dir[1].numpy()
+    gtb = d.gt_edge[b.edge_ids].cpu().numpy()
+    em = em.cpu().numpy()
+    bt = b.ei_dir[1].cpu().numpy()
     ge = []
     for p in pos.tolist():
         inc = np.nonzero(bt == p)[0]
@@ -92,9 +93,9 @@ if __name__ == "__main__":
                 t0 = time.time()
                 extra = {}
                 if name in TABULAR:
-                    m = fit_tabular(name, d.x[d.train_mask].numpy(), d.y[d.train_mask].numpy(), seed)
-                    p = predict(m, d.x.numpy())
-                    thr = best_threshold(p[d.val_mask.numpy()], d.y[d.val_mask].numpy())
+                    m = fit_tabular(name, d.x[d.train_mask].cpu().numpy(), d.y[d.train_mask].cpu().numpy(), seed)
+                    p = predict(m, d.x.cpu().numpy())
+                    thr = best_threshold(p[d.val_mask.cpu().numpy()], d.y[d.val_mask].cpu().numpy())
                 else:
                     base = name.split(":")[0]
                     kw = dict(VARIANTS.get(name, {}))

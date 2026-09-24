@@ -123,30 +123,30 @@ def fraud_ring():
     from run_synthetic import PERIODS
     d = prepare_synthetic(generate(seed=0))
     model = build("rtxgnn", d.x.size(1), periods=PERIODS)
-    model.load_state_dict(torch.load(ck)); model.eval()
+    model.load_state_dict(torch.load(ck, map_location="cpu")); model.eval()
     with torch.no_grad():
         out = model(d)
-    p = torch.sigmoid(out["logit"]).numpy()
+    p = torch.sigmoid(out["logit"]).cpu().numpy()
     last = out["layers"][-1]
     s, t = d.ei_dir
-    imp = (last["edge"] * last["node"][s] * last["att"]).numpy()
+    imp = (last["edge"] * last["node"][s] * last["att"]).cpu().numpy()
     # pick the ring with the most detected test members
     ring_edges = torch.nonzero(d.gt_edge_raw == 1).squeeze(-1)
     src, dst = d.edge_index[:, ring_edges]
     G = nx.DiGraph(); G.add_edges_from(zip(src.tolist(), dst.tolist()))
     rings = [sorted(c) for c in nx.weakly_connected_components(G)]
-    test = d.test_mask.numpy()
+    test = d.test_mask.cpu().numpy()
     rings.sort(key=lambda c: -sum(test[v] and p[v] > 0.5 for v in c))
     ring = rings[0]
     target = next(v for v in ring if test[v]) if any(test[v] for v in ring) else ring[0]
     nodes = set(ring)
-    ei = d.ei_dir.numpy()
+    ei = d.ei_dir.cpu().numpy()
     for v in ring:
         nb = ei[0, ei[1] == v]
         nodes.update(nb[:6].tolist())
     nodes = sorted(nodes)
     H = nx.DiGraph(); H.add_nodes_from(nodes)
-    ets = d.edge_t.numpy(); et = d.etype.numpy()
+    ets = d.edge_t.cpu().numpy(); et = d.etype.cpu().numpy()
     elist = []
     for e in range(ei.shape[1]):
         a, b = ei[0, e], ei[1, e]

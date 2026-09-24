@@ -126,7 +126,7 @@ def fidelity(model, b, pos, attr, ks, cls):
             x[pos] = b.x[pos] * keep
             p = prob(model, b, x=x)[0][pos]
             fm = pc0 - torch.where(cls == 1, p, 1 - p)
-            res[k] = (fp.numpy(), fm.numpy())
+            res[k] = (fp.cpu().numpy(), fm.cpu().numpy())
     return res
 
 

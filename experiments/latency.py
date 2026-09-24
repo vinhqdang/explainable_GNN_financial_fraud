@@ -85,7 +85,7 @@ if __name__ == "__main__":
         model = build(name, d.x.size(1))
         ck = os.path.join(RESULTS, "ckpt", f"{name}_s0.pt")
         if os.path.exists(ck):
-            model.load_state_dict(torch.load(ck))
+            model.load_state_dict(torch.load(ck, map_location="cpu"))
         model.eval()
         gen = torch.Generator().manual_seed(0)
         for B in [int(b) for b in a.batches.split(",")]:

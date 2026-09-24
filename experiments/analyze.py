@@ -203,7 +203,7 @@ def operational():
     from rtxgnn.graph import prepare, split_regions
     d = prepare(load_elliptic())
     _, dev = split_regions(d)
-    te = dev.test_mask.numpy(); y = dev.y.numpy()[te]
+    te = dev.test_mask.cpu().numpy(); y = dev.y.cpu().numpy()[te]
     npos = int(y.sum())
     macro("nTestIllicit", f"{npos:,}"); macro("nTest", f"{int(te.sum()):,}")
     lines = ["\\begin{tabular}{lrrrrrrr}", "\\toprule",

@@ -28,18 +28,18 @@ if __name__ == "__main__":
     d = elliptic()
     _, dev = split_regions(d)
     model = build("rtxgnn", d.x.size(1))
-    model.load_state_dict(torch.load(os.path.join(RESULTS, "ckpt", "rtxgnn_s0.pt")))
+    model.load_state_dict(torch.load(os.path.join(RESULTS, "ckpt", "rtxgnn_s0.pt"), map_location="cpu"))
     model.eval()
     thr = [json.loads(l) for l in open(os.path.join(RESULTS, "elliptic_main.jsonl"))
            if json.loads(l)["model"] == "rtxgnn" and json.loads(l)["seed"] == 0][0]["thr"]
     with torch.no_grad():
-        p = torch.sigmoid(model(dev)["logit"]).numpy()
-    te = dev.test_mask.numpy(); y = dev.y.numpy()
-    deg = torch.bincount(dev.ei_dir[1], minlength=dev.num_nodes).numpy()
+        p = torch.sigmoid(model(dev)["logit"]).cpu().numpy()
+    te = dev.test_mask.cpu().numpy(); y = dev.y.cpu().numpy()
+    deg = torch.bincount(dev.ei_dir[1], minlength=dev.num_nodes).cpu().numpy()
     rng = np.random.default_rng(0)
-    cand_tp = np.nonzero(te & (y == 1) & (p >= thr) & (deg >= 2) & (dev.t.numpy() <= 42))[0]
+    cand_tp = np.nonzero(te & (y == 1) & (p >= thr) & (deg >= 2) & (dev.t.cpu().numpy() <= 42))[0]
     cand_tn = np.nonzero(te & (y == 0) & (p < thr) & (deg >= 2))[0]
-    cand_fn = np.nonzero(te & (y == 1) & (p < thr) & (dev.t.numpy() >= 43))[0]
+    cand_fn = np.nonzero(te & (y == 1) & (p < thr) & (dev.t.cpu().numpy() >= 43))[0]
     picks = [("true positive", int(rng.choice(cand_tp))), ("true positive", int(rng.choice(cand_tp))),
              ("true negative", int(rng.choice(cand_tn))), ("false negative (after step 43)", int(rng.choice(cand_fn)))]
     csr = CSR(dev.ei_dir, dev.num_nodes)

@@ -112,5 +112,5 @@ def quantile_normalize(x, fit_mask, seed=0):
     on ``fit_mask`` rows only (no labels are used)."""
     from sklearn.preprocessing import QuantileTransformer
     q = QuantileTransformer(output_distribution="normal", n_quantiles=1000, subsample=200000,
-                            random_state=seed).fit(x[fit_mask].numpy())
-    return torch.tensor(q.transform(x.numpy()), dtype=torch.float)
+                            random_state=seed).fit(x[fit_mask].cpu().numpy())
+    return torch.tensor(q.transform(x.cpu().numpy()), dtype=torch.float)

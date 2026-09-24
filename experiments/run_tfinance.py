@@ -11,6 +11,7 @@ import torch
 from common import slot, RESULTS, TABULAR, append_jsonl, done_keys, parse_seeds, n_params
 from rtxgnn.data import load_tfinance, quantile_normalize
 from rtxgnn.graph import prepare
+from rtxgnn.device import to_dev
 from rtxgnn.train import build, train_model, evaluate, set_seed, best_threshold
 from rtxgnn.tabular import fit_tabular, predict
 
@@ -28,15 +29,16 @@ if __name__ == "__main__":
         d.all_steps = [0.0]
         d.x_raw = d.x.clone()
         d.x = quantile_normalize(d.x, d.train_mask)
+        d = to_dev(d)
         for name in a.models.split(","):
             if (name, split) in done:
                 continue
             set_seed(split)
             t0 = time.time()
             if name in TABULAR:
-                m = fit_tabular(name, d.x_raw[d.train_mask].numpy(), d.y[d.train_mask].numpy(), split)
-                p = predict(m, d.x_raw.numpy())
-                thr = best_threshold(p[d.val_mask.numpy()], d.y[d.val_mask].numpy())
+                m = fit_tabular(name, d.x_raw[d.train_mask].cpu().numpy(), d.y[d.train_mask].cpu().numpy(), split)
+                p = predict(m, d.x_raw.cpu().numpy())
+                thr = best_threshold(p[d.val_mask.cpu().numpy()], d.y[d.val_mask].cpu().numpy())
             else:
                 kw = {"temporal": "none"} if name == "rtxgnn" else {}
                 model = build(name, d.x.size(1), **kw)

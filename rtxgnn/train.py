@@ -66,9 +66,16 @@ def train_model(model, data, deval, epochs=300, patience=40, lr=5e-3, wd=1e-5,
 
     Returns the probabilities of all nodes of ``deval`` from the best epoch, the
     decision threshold chosen on the validation nodes, and a training history."""
+    device = data.x.device
+    model.to(device)
+    with torch.device(device):
+        return _train(model, data, deval, epochs, patience, lr, wd, rtx_cfg, verbose, log_every, eval_every)
+
+
+def _train(model, data, deval, epochs, patience, lr, wd, rtx_cfg, verbose, log_every, eval_every):
     train_mask = data.train_mask
     opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
-    y_val = deval.y[deval.val_mask].numpy()
+    y_val = deval.y[deval.val_mask].cpu().numpy()
     prior = float(data.y[train_mask].float().mean())
     best, best_state, bad, hist = -1, None, 0, []
     cfg = None
@@ -96,8 +103,8 @@ def train_model(model, data, deval, epochs=300, patience=40, lr=5e-3, wd=1e-5,
             continue
         model.eval()
         with torch.no_grad():
-            p = torch.sigmoid(model(deval)["logit"]).numpy()
-        ap = average_precision_score(y_val, p[deval.val_mask.numpy()])
+            p = torch.sigmoid(model(deval)["logit"]).cpu().numpy()
+        ap = average_precision_score(y_val, p[deval.val_mask.cpu().numpy()])
         hist.append(dict(epoch=ep, loss=float(loss.detach()), val_ap=ap, **parts))
         if verbose and ep % log_every == 0:
             print(f"ep {ep} loss {loss.item():.4f} val_ap {ap:.4f} {parts} {time.time()-t0:.0f}s", flush=True)
@@ -111,21 +118,21 @@ def train_model(model, data, deval, epochs=300, patience=40, lr=5e-3, wd=1e-5,
                 break
     model.load_state_dict(best_state)
     model.eval()
-    thr = best_threshold(best_p[deval.val_mask.numpy()], y_val)
+    thr = best_threshold(best_p[deval.val_mask.cpu().numpy()], y_val)
     return best_p, thr, hist
 
 
 def evaluate(p, data, thr, mask=None):
     mask = data.test_mask if mask is None else mask
-    return metrics(p[mask.numpy()], data.y[mask].numpy(), thr)
+    return metrics(p[mask.cpu().numpy()], data.y[mask].cpu().numpy(), thr)
 
 
 def per_step(p, data, thr, steps):
     rows = []
     for t in steps:
         m = data.test_mask & (data.t == t)
-        y = data.y[m].numpy()
-        r = metrics(p[m.numpy()], y, thr)
+        y = data.y[m].cpu().numpy()
+        r = metrics(p[m.cpu().numpy()], y, thr)
         r.update(step=int(t), n=int(m.sum()), illicit=int(y.sum()))
         rows.append(r)
     return rows

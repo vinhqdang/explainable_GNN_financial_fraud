@@ -16,6 +16,7 @@ import torch
 
 from common import slot, RESULTS, TABULAR, elliptic, parse_seeds, append_jsonl, done_keys, n_params
 from rtxgnn.graph import split_regions
+from rtxgnn.device import to_dev
 from rtxgnn.train import build, train_model, evaluate, set_seed, best_threshold
 from rtxgnn.tabular import fit_tabular, predict
 
@@ -25,7 +26,7 @@ def stratified_subset(d, frac, seed):
     keep = torch.zeros_like(d.train_mask)
     for t in range(1, 31):
         for c in (0, 1):
-            idx = torch.nonzero(d.train_mask & (d.t == t) & (d.y == c)).squeeze(-1).numpy()
+            idx = torch.nonzero(d.train_mask & (d.t == t) & (d.y == c)).squeeze(-1).cpu().numpy()
             if len(idx) == 0:
                 continue
             k = max(1 if c == 1 else 0, int(round(frac * len(idx))))
@@ -48,15 +49,16 @@ if __name__ == "__main__":
         for frac in [float(f) for f in a.fracs.split(",")]:
             sub = stratified_subset(d, frac, seed) if frac < 1 else d.train_mask.clone()
             dtr, dev = split_regions(d, train_mask=sub)
+            dtr, dev = to_dev(dtr), to_dev(dev)
             for name in a.models.split(","):
                 if (name, frac, seed) in done:
                     continue
                 set_seed(seed)
                 t0 = time.time()
                 if name in TABULAR:
-                    m = fit_tabular(name, dtr.x_raw[dtr.train_mask].numpy(), dtr.y[dtr.train_mask].numpy(), seed)
-                    p = predict(m, dev.x_raw.numpy())
-                    thr = best_threshold(p[dev.val_mask.numpy()], dev.y[dev.val_mask].numpy())
+                    m = fit_tabular(name, dtr.x_raw[dtr.train_mask].cpu().numpy(), dtr.y[dtr.train_mask].cpu().numpy(), seed)
+                    p = predict(m, dev.x_raw.cpu().numpy())
+                    thr = best_threshold(p[dev.val_mask.cpu().numpy()], dev.y[dev.val_mask].cpu().numpy())
                 else:
                     model = build(name, d.x.size(1))
                     with slot() if name == "rtxgnn" else open(os.devnull):
