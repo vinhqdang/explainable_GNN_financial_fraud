@@ -1,7 +1,7 @@
 """Second real-world financial dataset: T-Finance (GADBench splits 0-4,
 40/20/40 train/validation/test). T-Finance has no timestamps, so temporal
 baselines are not applicable and RTXGNN runs without HRAPE (SEAL + objective
-only). Graph models see at most 25 sampled neighbours per node."""
+only). Graph models see at most 10 sampled neighbours per node."""
 import argparse
 import os
 import time

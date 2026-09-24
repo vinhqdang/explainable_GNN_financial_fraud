@@ -72,7 +72,7 @@ def describe(data):
     return pd.DataFrame(rows)
 
 
-def load_tfinance(root=None, split=0, max_neighbors=25, seed=0):
+def load_tfinance(root=None, split=0, max_neighbors=10, seed=0):
     """T-Finance (Tang et al., 2022) as distributed by GADBench (Tang et al.,
     2023): 39,357 accounts of a financial platform, 10 features, fraud label.
     ``split`` selects one of GADBench's fixed splits (0-9: 40/20/40 supervised).
