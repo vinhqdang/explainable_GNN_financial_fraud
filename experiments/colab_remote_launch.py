@@ -2,7 +2,7 @@
 All scripts skip runs whose records already exist, so relaunching resumes."""
 import subprocess
 env = "RTX_DATA=/content/data RTX_DEVICE=cuda PYTHONPATH=.. MALLOC_MMAP_THRESHOLD_=65536"
-V = ("rtxgnn:full,rtxgnn:time2vec_abs,rtxgnn:no_suf,rtxgnn:no_nec,rtxgnn:no_curriculum,rtxgnn:focal_loss,"
+V = ("rtxgnn:full,rtxgnn:no_sparsity,rtxgnn:time2vec_abs,rtxgnn:no_suf,rtxgnn:no_nec,rtxgnn:no_curriculum,rtxgnn:focal_loss,"
      "rtxgnn:sparsity_x4,rtxgnn:no_sparsity_drop0,rtxgnn:no_sparsity_drop5,rtxgnn:no_sparsity_wd1e3,"
      "rtxgnn:dim32,rtxgnn:dim128,rtxgnn:layers1")
 jobs = {
