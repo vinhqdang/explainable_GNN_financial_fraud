@@ -71,6 +71,8 @@ def paired(a, b, metric):
 def main_rows():
     evo = load("elliptic_evo.jsonl")
     rows = load("elliptic_main.jsonl")
+    seen = {(r["model"], r["seed"]) for r in rows}
+    rows += [r for r in load("elliptic_main_gpu.jsonl") if (r["model"], r["seed"]) not in seen]
     if evo:
         rows = [r for r in rows if r["model"] != "evolvegcn"] + evo
     return rows
@@ -165,7 +167,7 @@ def variant_rows(source):
     if source == "cpu":
         for r in load("elliptic_ablation.jsonl"):
             R[r["model"].split(":", 1)[1]][r["seed"]] = r
-        for r in load("elliptic_main.jsonl"):
+        for r in main_rows():
             if r["model"] == "rtxgnn" and r["seed"] < 5:
                 R["full"][r["seed"]] = r
     else:
