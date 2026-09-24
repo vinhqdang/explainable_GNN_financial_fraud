@@ -10,7 +10,7 @@ for f in label_efficiency.jsonl retraining.jsonl elliptic_ablation2.jsonl ellipt
   [ -s $HERE/../results/$f ] && timeout 120 colab upload -s $S $HERE/../results/$f /content/rtx/results/$f
 done
 echo 'import os; os.makedirs("/content/data/tfin", exist_ok=True)' | timeout 60 colab exec -s $S
-timeout 600 colab upload -s $S /tmp/data/tfin/tfinance.npz /content/data/tfin/tfinance.npz
+for k in 0 1 2 3 4; do timeout 300 colab upload -s $S /tmp/data/tfin/tfinance_nb10_s$k.pt /content/data/tfin/tfinance_nb10_s$k.pt; done
 timeout 300 colab upload -s $S $HERE/../results/elliptic_main.jsonl /content/rtx/results/elliptic_main.jsonl
 timeout 120 colab exec -s $S -f $HERE/colab_remote_launch.py --timeout 100
 COLAB_SESSION=$S SYNC_EVERY=60 nohup $HERE/colab_sync.sh > /tmp/logs/colab_sync.log 2>&1 &

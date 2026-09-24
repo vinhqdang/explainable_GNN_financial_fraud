@@ -79,6 +79,13 @@ def load_tfinance(root=None, split=0, max_neighbors=10, seed=0):
     Graph models see at most ``max_neighbors`` uniformly sampled neighbours per
     node (the full graph has 21.2M undirected edges)."""
     root = root or os.path.join(DATA_ROOT, "tfin")
+    cache = os.path.join(root, f"tfinance_nb{max_neighbors}_s{seed}.pt")
+    if os.path.exists(cache):
+        data = torch.load(cache, weights_only=False)
+        data.train_mask = data.train_masks[:, split]
+        data.val_mask = data.val_masks[:, split]
+        data.test_mask = data.test_masks[:, split]
+        return data
     z = np.load(os.path.join(root, "tfinance.npz"))
     x = torch.tensor(z["x"], dtype=torch.float)
     x = (x - x.mean(0)) / (x.std(0) + 1e-9)
@@ -101,9 +108,13 @@ def load_tfinance(root=None, split=0, max_neighbors=10, seed=0):
     und = torch.unique(und, dim=1)
     data = Data(x=x, y=y, edge_index=und, num_nodes=len(y))
     data.time_step = torch.zeros(len(y))
-    data.train_mask = torch.tensor(z["train_masks"][:, split]).bool()
-    data.val_mask = torch.tensor(z["val_masks"][:, split]).bool()
-    data.test_mask = torch.tensor(z["test_masks"][:, split]).bool()
+    data.train_masks = torch.tensor(z["train_masks"]).bool()
+    data.val_masks = torch.tensor(z["val_masks"]).bool()
+    data.test_masks = torch.tensor(z["test_masks"]).bool()
+    torch.save(data, cache)
+    data.train_mask = data.train_masks[:, split]
+    data.val_mask = data.val_masks[:, split]
+    data.test_mask = data.test_masks[:, split]
     return data
 
 
