@@ -490,18 +490,47 @@ def latency_table():
 
 
 def preprocessing_table():
-    raw = by_model(load("elliptic_raw.jsonl"))
-    main = by_model(load("elliptic_main.jsonl"))
+    raw = load("elliptic_raw.jsonl")
+    main = load("elliptic_main.jsonl")
     if not raw:
         return
-    lines = ["\\begin{tabular}{lcccc}", "\\toprule", " & \\multicolumn{2}{c}{raw features} & \\multicolumn{2}{c}{quantile-normalised}\\\\",
-             "\\cmidrule(lr){2-3}\\cmidrule(lr){4-5}", "Model & F1 & AP & F1 & AP\\\\", "\\midrule"]
+    raw = {r["model"]: r for r in raw if r["seed"] == 0}
+    main = {r["model"]: r for r in main if r["seed"] == 0}
+    lines = ["\\begin{tabular}{lcccccc}", "\\toprule",
+             " & \\multicolumn{3}{c}{raw features} & \\multicolumn{3}{c}{quantile-normalised}\\\\",
+             "\\cmidrule(lr){2-4}\\cmidrule(lr){5-7}",
+             "Model & val.\\ AP & test F1 & test AP & val.\\ AP & test F1 & test AP\\\\", "\\midrule"]
+    n = better = 0
     for m in ("mlp", "gcn", "sage", "gat", "sefraud", "rtxgnn"):
-        if m in raw and m in main and 0 in raw[m] and 0 in main[m]:
-            a, b = raw[m][0], main[m][0]
-            lines.append(f"{NAMES[m]} & {a['f1']:.3f} & {a['ap']:.3f} & {b['f1']:.3f} & {b['ap']:.3f}\\\\")
+        if m in raw and m in main:
+            a, b = raw[m], main[m]
+            n += 1; better += b["val"]["ap"] > a["val"]["ap"]
+            lines.append(f"{NAMES[m]} & {a['val']['ap']:.3f} & {a['test']['f1']:.3f} & {a['test']['ap']:.3f} & "
+                         f"{b['val']['ap']:.3f} & {b['test']['f1']:.3f} & {b['test']['ap']:.3f}\\\\")
     lines += ["\\bottomrule", "\\end{tabular}"]
     open(os.path.join(OUT, "preprocessing.tex"), "w").write("\n".join(lines) + "\n")
+    macro("preNmodels", str(n)); macro("preNvalBetter", str(better))
+
+
+def validation_check():
+    """Checks the design choices made during development (shift-invariant HRAPE)
+    on the validation steps only."""
+    for source, prefix, keys in (("cpu", "val", ("full", "time2vec", "hrape_abs", "no_hrape")),
+                                 ("gpu", "valG", ("full", "time2vec_abs"))):
+        R = variant_rows(source)
+        ref = R.get("full", {})
+        for k in keys:
+            if not R.get(k):
+                continue
+            seeds = sorted(R[k])
+            ap = [R[k][s]["val"]["ap"] for s in seeds]; f1 = [R[k][s]["val"]["f1"] for s in seeds]
+            name = k.replace("_", "")
+            macro(f"{prefix}AP{name}", f"{np.mean(ap):.3f}"); macro(f"{prefix}Fone{name}", f"{np.mean(f1):.3f}")
+            macro(f"{prefix}APsd{name}", f"{np.std(ap, ddof=1):.3f}")
+            if k != "full":
+                common = [s for s in seeds if s in ref]
+                wins = sum(ref[s]["val"]["f1"] > R[k][s]["val"]["f1"] for s in common)
+                macro(f"{prefix}Wins{name}", f"{wins} of {len(common)}")
 
 
 def ring_macros():
@@ -525,7 +554,7 @@ if __name__ == "__main__":
     variant_table(REG, "regularisation.tex", "reg")
     variant_table(SENS, "sensitivity.tex", "sens")
     for f in (operational, temporal_table, label_eff_table, explanation_table, synthetic_table, tfinance_table,
-              latency_table, preprocessing_table, ring_macros):
+              latency_table, preprocessing_table, validation_check, ring_macros):
         try:
             f()
         except Exception as e:
