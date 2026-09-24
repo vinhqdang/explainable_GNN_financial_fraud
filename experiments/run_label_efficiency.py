@@ -14,7 +14,7 @@ import time
 import numpy as np
 import torch
 
-from common import RESULTS, TABULAR, elliptic, parse_seeds, append_jsonl, done_keys, n_params
+from common import slot, RESULTS, TABULAR, elliptic, parse_seeds, append_jsonl, done_keys, n_params
 from rtxgnn.graph import split_regions
 from rtxgnn.train import build, train_model, evaluate, set_seed, best_threshold
 from rtxgnn.tabular import fit_tabular, predict
@@ -59,8 +59,9 @@ if __name__ == "__main__":
                     thr = best_threshold(p[dev.val_mask.numpy()], dev.y[dev.val_mask].numpy())
                 else:
                     model = build(name, d.x.size(1))
-                    p, thr, _ = train_model(model, dtr, dev, epochs=300, patience=40,
-                                            eval_every=2 if name == "rtxgnn" else 1)
+                    with slot() if name == "rtxgnn" else open(os.devnull):
+                        p, thr, _ = train_model(model, dtr, dev, epochs=300, patience=40,
+                                                eval_every=2 if name == "rtxgnn" else 1)
                 row = dict(model=name, frac=frac, seed=seed, n_train=int(sub.sum()),
                            n_train_illicit=int((sub & (d.y == 1)).sum()), time=time.time() - t0,
                            test=evaluate(p, dev, thr), val=evaluate(p, dev, thr, dev.val_mask))

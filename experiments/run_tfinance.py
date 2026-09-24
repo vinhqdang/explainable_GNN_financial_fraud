@@ -8,7 +8,7 @@ import time
 
 import torch
 
-from common import RESULTS, TABULAR, append_jsonl, done_keys, parse_seeds, n_params
+from common import slot, RESULTS, TABULAR, append_jsonl, done_keys, parse_seeds, n_params
 from rtxgnn.data import load_tfinance, quantile_normalize
 from rtxgnn.graph import prepare
 from rtxgnn.train import build, train_model, evaluate, set_seed, best_threshold
@@ -40,8 +40,9 @@ if __name__ == "__main__":
             else:
                 kw = {"temporal": "none"} if name == "rtxgnn" else {}
                 model = build(name, d.x.size(1), **kw)
-                p, thr, _ = train_model(model, d, d, epochs=300, patience=40,
-                                        eval_every=2 if name == "rtxgnn" else 1)
+                with slot() if name in ("rtxgnn", "sefraud") else open(os.devnull):
+                    p, thr, _ = train_model(model, d, d, epochs=300, patience=40,
+                                            eval_every=2 if name == "rtxgnn" else 1)
             row = dict(model=name, seed=split, thr=thr, time=time.time() - t0, test=evaluate(p, d, thr))
             append_jsonl(out, row)
             print(name, split, {k: round(v, 4) for k, v in row["test"].items()}, f"{row['time']:.0f}s", flush=True)

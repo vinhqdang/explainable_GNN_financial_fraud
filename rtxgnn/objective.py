@@ -86,6 +86,8 @@ def explanation_views(out, data, k_feat, k_edge):
 
 
 def rtx_loss(model, data, out, mask, cfg, epoch, prior):
+    """Returns the loss terms that still need a backward pass (prediction and
+    sparsity); the sufficiency and necessity terms are back-propagated here."""
     y = data.y[mask].float()
     loss = pred_loss(out["logit"][mask], y, prior, cfg)
     parts = {"pred": loss.item()}
@@ -97,16 +99,21 @@ def rtx_loss(model, data, out, mask, cfg, epoch, prior):
     if need_views and w > 0:
         keep, drop = explanation_views(out, data, cfg["k_feat"], cfg["k_edge"])
         sel = mask
+        # the two views are back-propagated one at a time (retaining the graph of
+        # the main forward pass); gradients are identical to summing the terms,
+        # but only one view graph is held in memory at any time
         if cfg["lam_suf"] > 0:
             p_keep = torch.sigmoid(model(data, override=keep)["logit"])
             l_suf = bern_kl(p[sel], p_keep[sel]).mean()
-            loss = loss + w * cfg["lam_suf"] * l_suf
+            (w * cfg["lam_suf"] * l_suf).backward(retain_graph=True)
             parts["suf"] = l_suf.item()
+            del p_keep
         if cfg["lam_nec"] > 0:
             p_drop = torch.sigmoid(model(data, override=drop)["logit"])
             l_nec = bern_kl(torch.full_like(p_drop[sel], prior), p_drop[sel]).mean()
-            loss = loss + w * cfg["lam_nec"] * l_nec
+            (w * cfg["lam_nec"] * l_nec).backward(retain_graph=True)
             parts["nec"] = l_nec.item()
+            del p_drop
     if cfg["lam_sp"] > 0:
         sp = out["feat"].mean() + sum(m["edge"].mean() + m["node"].mean() for m in out["layers"]) / len(out["layers"])
         loss = loss + w * cfg["lam_sp"] * sp

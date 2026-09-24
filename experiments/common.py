@@ -51,3 +51,28 @@ def done_keys(path, keys=("model", "seed")):
 
 def n_params(model):
     return sum(p.numel() for p in model.parameters())
+
+
+class slot:
+    """At most ``n`` memory-heavy trainings at a time across processes (file locks)."""
+
+    def __init__(self, n=2, prefix="/tmp/rtx_slot"):
+        self.n, self.prefix, self.f = n, prefix, None
+
+    def __enter__(self):
+        import fcntl
+        while True:
+            for i in range(self.n):
+                f = open(f"{self.prefix}{i}.lock", "w")
+                try:
+                    fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    self.f = f
+                    return self
+                except OSError:
+                    f.close()
+            time.sleep(10)
+
+    def __exit__(self, *exc):
+        import fcntl
+        fcntl.flock(self.f, fcntl.LOCK_UN)
+        self.f.close()

@@ -11,7 +11,7 @@ import time
 import numpy as np
 import torch
 
-from common import RESULTS, TABULAR, elliptic, parse_seeds, append_jsonl, done_keys, n_params
+from common import slot, RESULTS, TABULAR, elliptic, parse_seeds, append_jsonl, done_keys, n_params
 from rtxgnn.graph import split_regions
 from rtxgnn.train import build, train_model, evaluate, per_step, set_seed, metrics, best_threshold
 from rtxgnn.tabular import fit_tabular, predict
@@ -55,8 +55,10 @@ def run_one(name, seed, d, dtr, dev, out_path, save_pred=True, epochs=300, patie
         mkw, ocfg, okw = VARIANTS[var or "full"] if base == "rtxgnn" else ({}, {}, {})
         mkw = dict(mkw)
         model = build(base, d.x.size(1), **mkw)
-        p, thr, hist = train_model(model, dtr, dev, epochs=epochs, patience=patience, rtx_cfg=ocfg,
-                                   eval_every=2 if base == "rtxgnn" else 1, **okw)
+        heavy = base in ("rtxgnn", "sefraud")
+        with slot() if heavy else open(os.devnull):
+            p, thr, hist = train_model(model, dtr, dev, epochs=epochs, patience=patience, rtx_cfg=ocfg,
+                                       eval_every=2 if base == "rtxgnn" else 1, **okw)
         info = dict(epochs=len(hist), params=n_params(model), best_val_ap=max(h["val_ap"] for h in hist))
         if base in ("rtxgnn", "sefraud", "gat") and seed < 5 and not getattr(run_one, "no_ckpt", False):
             os.makedirs(os.path.join(RESULTS, "ckpt"), exist_ok=True)
