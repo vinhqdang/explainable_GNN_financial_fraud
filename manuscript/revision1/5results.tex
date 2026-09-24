@@ -46,7 +46,13 @@ An F1 around 0.7 still means that errors are frequent. At the validation-chosen 
 \input{tables/ablation.tex}
 \end{table}
 
-\ABLTEXT
+Table~\ref{tab:ablation} isolates the components of RTXGNN. The primary study uses the same CPU runs and seeds 0--4 as Table~\ref{tab:main}. The secondary study adds further variants with 3 seeds, each compared with a reference model trained on the same hardware.
+
+\paragraph{Temporal encoding} Replacing HRAPE by Time2Vec on the same time gaps lowers F1 by \abltimeTwovecDelta{} (paired $p=\abltimeTwovecP$), and Time2Vec on absolute time lowers it by \ablGtimeTwovecabsDelta{} ($p=\ablGtimeTwovecabsP$). Adding an absolute-time encoding to HRAPE lowers the mean F1 by \ablhrapeabsDelta{} and makes it much less stable across seeds (standard deviation 0.08 against 0.05). Removing the temporal encoding altogether costs \ablnohrapeDelta{} F1, which is not significant with 5 seeds ($p=\ablnohrapeP$). This is consistent with Section~\ref{subsec:hrape}: on Elliptic HRAPE mainly contributes the velocity (degree) signal, because all edges connect transactions of the same time step. The design choice that matters most is to encode time relative to the scored transaction rather than absolutely.
+
+\paragraph{Explanation components} Replacing the SEAL masks by plain attention ($\ablnosealDelta$, $p=\ablnosealP$), removing the sparsity term ($\ablnosparsityDelta$, $p=\ablnosparsityP$), or removing both fidelity terms ($\ablnofidelityDelta$, $p=\ablnofidelityP$) does not change detection performance significantly. In the secondary study, removing the sufficiency term alone lowers F1 by \ablGnosufDelta{} ($p=\ablGnosufP$), and removing the necessity term leaves it unchanged. The explanation machinery thus comes at no measurable cost in accuracy. What it provides is an explanation with the properties measured in Section~\ref{subsec:explanations}, which the variants without masks or without fidelity terms do not have.
+
+\paragraph{Training choices} Class-balanced cross-entropy is clearly preferable to focal loss (\ablGfocallossDelta{} F1 with focal loss), and the curriculum on the explanation terms tends to help (\ablGnocurriculumDelta{} without it, not significant). The model is also sensitive to its capacity (Table~\ref{tab:sensitivity}). Hidden size 64 with two SEAL layers, the configuration fixed before the experiments, performs best among the tested settings, and a single layer is significantly worse (\sensGlayersOneDelta{} F1).
 
 \subsection{Mask sparsity versus conventional regularisation}
 \label{subsec:regularisation}
@@ -59,7 +65,15 @@ An F1 around 0.7 still means that errors are frequent. At the validation-chosen 
 \input{tables/regularisation.tex}
 \end{table}
 
-\REGTEXT
+Table~\ref{tab:regularisation} compares the mask sparsity term with conventional regularisers. With the default weight $\lambda_{sp}=0.05$, the model performs like models trained without the sparsity term but with dropout 0, dropout 0.5 or weight decay $10^{-3}$. All differences are at most 0.003 F1 in the secondary study and 0.021 in the primary study, and none is significant. A four times larger weight ($\lambda_{sp}=0.2$) lowers F1 by \regGsparsityxFourDelta{} ($p=\regGsparsityxFourP$). Mask sparsity is therefore not a better regulariser than the standard ones, but it is not a harmful one either at a moderate weight. Its purpose is to keep explanations selective (Section~\ref{subsec:cases}).
+
+\begin{table}[!t]
+\centering
+\caption{Sensitivity to the hidden size $D$ and the number of SEAL layers $L$ (secondary study, 3 seeds, GPU; notation as in Table~\ref{tab:ablation}).}
+\label{tab:sensitivity}
+\footnotesize
+\input{tables/sensitivity.tex}
+\end{table}
 
 \subsection{Temporal behaviour, drift and retraining}
 \label{subsec:temporal}
@@ -188,7 +202,7 @@ The temporal mechanism helps where timing matters. In the default setting, RTXGN
 \input{tables/tfinance.tex}
 \end{table}
 
-\TFTEXT
+T-Finance is a transaction network between the accounts of a financial company, with account-level features and expert labels. Its graph is far denser than Elliptic's, and it has no engineered neighbourhood aggregates. Table~\ref{tab:tfinance} shows that the picture differs from Elliptic accordingly. All graph neural networks clearly outperform the feature-only models: the best tree ensemble reaches F1 \tfxgbFone{} and AP \tfxgbAP, while the GNNs reach F1 between \tfgcnFone{} and \tfsageFone{}. RTXGNN, which runs here without its temporal component, is among the best models (F1 \tfrtxgnnFone, AUC \tfrtxgnnAUC, AP \tfrtxgnnAP). It is within about one point of F1 of the best model (GraphSAGE, F1 \tfsageFone, AP \tfsageAP) and on par with FRAUDRE (\tffraudreFone) and the self-explaining SEFraud (\tfsefraudFone). SEAL's explanation mechanism therefore transfers to a second real financial network, with different entities, features and label source, without loss of accuracy.
 
 \subsection{End-to-end latency}
 \label{subsec:latency}
