@@ -1,0 +1,197 @@
+\section{Results}
+\label{sec:experiments}
+
+\subsection{Detection performance on Elliptic}
+\label{subsec:main}
+
+Table~\ref{tab:main} reports the test results of all models over \nSeedsMain{} seeds.
+
+\begin{table}[!t]
+\centering
+\caption{Test results on Elliptic (time steps 35--49; \nTest{} labelled transactions, \nTestIllicit{} illicit), mean $\pm$ standard deviation over 10 seeds (logistic regression is deterministic). F1, precision and recall refer to the illicit class at the threshold chosen on the validation steps; AUC and AP are threshold-free. Best value per column in bold. $^{\dagger}$/$^{\ddagger}$: RTXGNN significantly better/worse (two-sided Wilcoxon signed-rank test over the paired seeds, Holm-corrected over the 16 comparisons, $\alpha=0.05$); marked for F1 and AP only.}
+\label{tab:main}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\input{tables/main.tex}
+\end{table}
+
+\MAINTEXT
+
+\subsection{What the scores mean operationally}
+\label{subsec:operational}
+
+\begin{table}[!t]
+\centering
+\caption{Operational view of the test period (\nTestIllicit{} illicit among \nTest{} labelled transactions), mean over the seeds. Left: number of alerts, missed illicit transactions and false alerts at the validation-chosen threshold. Right: precision among the top-$K$ scored test transactions for alert budgets $K$.}
+\label{tab:operational}
+\footnotesize
+\input{tables/operational.tex}
+\end{table}
+
+\OPTEXT
+
+\subsection{Ablation study}
+\label{subsec:ablation}
+
+\begin{table}[!t]
+\centering
+\caption{Ablation of RTXGNN on Elliptic (mean $\pm$ standard deviation; $\Delta$F1 is the mean paired difference to the full model over the common seeds, with the $p$-value of a paired $t$-test). Variants listed with 3 seeds are secondary.}
+\label{tab:ablation}
+\footnotesize
+\input{tables/ablation.tex}
+\end{table}
+
+\ABLTEXT
+
+\subsection{Mask sparsity versus conventional regularisation}
+\label{subsec:regularisation}
+
+\begin{table}[!t]
+\centering
+\caption{Mask sparsity compared with dropout and weight decay (Elliptic; notation as in Table~\ref{tab:ablation}).}
+\label{tab:regularisation}
+\footnotesize
+\input{tables/regularisation.tex}
+\end{table}
+
+\REGTEXT
+
+\subsection{Temporal behaviour, drift and retraining}
+\label{subsec:temporal}
+
+\begin{table}[!t]
+\centering
+\caption{Per-step test results on Elliptic. Static: models trained on steps 1--30 (mean $\pm$ s.d.\ over 10 seeds for RTXGNN; mean for the random forest). Retrained: refitted before each step on steps $\le t-5$, validated on $t-4..t-1$ (mean over 3 seeds).}
+\label{tab:temporal}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\input{tables/temporal.tex}
+\end{table}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\textwidth]{figures/temporal.pdf}
+\caption{F1 per test time step (lines; shaded band: $\pm$1 s.d.\ over seeds) and number of illicit transactions per step (grey bars, right axis). Dashed lines: models retrained before every step with a one-step label delay.}
+\label{fig:temporal}
+\end{figure}
+
+\TEMPTEXT
+
+\subsection{Label efficiency}
+\label{subsec:label}
+
+\begin{table}[!t]
+\centering
+\caption{Test F1 on Elliptic with a stratified fraction of the training labels (mean $\pm$ s.d.\ over 5 subsets; in parentheses: percentage of the model's own full-label F1). Validation and test sets are never subsampled.}
+\label{tab:label_efficiency}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\input{tables/label_efficiency.tex}
+\end{table}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.55\textwidth]{figures/label_efficiency.pdf}
+\caption{Label efficiency on Elliptic (mean $\pm$ s.d.\ over 5 stratified subsets).}
+\label{fig:label}
+\end{figure}
+
+\LABTEXT
+
+\subsection{Faithfulness and cost of the explanations}
+\label{subsec:explanations}
+
+\begin{table}[!t]
+\centering
+\caption{Feature explanations of 600 Elliptic test transactions (300 illicit, 300 licit), mean over 5 trained models. Fid$^{+}$: drop of the predicted-class probability when the top-$k$ features are removed (higher is better); Fid$^{-}$: drop when only the top-$k$ features are kept (lower is better). Stab.: Jaccard similarity of the top-10 features under a perturbation of the input by $\mathcal{N}(0,0.05^2)$. Time: milliseconds per explained transaction on 2 CPU threads, batched. Post-hoc explainers are applied to the same RTXGNN models.}
+\label{tab:explanations}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\input{tables/explanations.tex}
+\end{table}
+
+\begin{table}[!t]
+\centering
+\caption{Class-wise faithfulness at $k=10$ (illicit and licit test transactions).}
+\label{tab:explanations_class}
+\footnotesize
+\input{tables/explanations_class.tex}
+\end{table}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\textwidth]{figures/fidelity.pdf}
+\caption{Sparsity--fidelity trade-off of feature explanations on Elliptic (mean over 5 models and 600 test transactions).}
+\label{fig:fidelity}
+\end{figure}
+
+\EXPTEXT
+
+\subsection{Controlled evaluation on the synthetic benchmark}
+\label{subsec:synthetic}
+
+\begin{table}[!t]
+\centering
+\caption{Test F1 on the synthetic benchmark (mean $\pm$ s.d.\ over 5 generated graphs per setting).}
+\label{tab:synthetic}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\input{tables/synthetic.tex}
+\end{table}
+
+\begin{table}[!t]
+\centering
+\caption{Ground-truth evaluation of edge explanations on the synthetic benchmark: AUC of the edge scores for identifying the two ring transactions among the incoming edges of each correctly detected ring member (mean over graphs 0--2; up to 100 accounts per graph).}
+\label{tab:synthetic_edges}
+\footnotesize
+\input{tables/synthetic_edges.tex}
+\end{table}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/fraud_ring.pdf}
+\caption{A laundering ring detected by RTXGNN on the synthetic benchmark (graph 0, default setting). Red nodes are ring members, blue nodes their other counterparties. Node labels give the predicted probability; the outlined node is a test account. Red solid arrows are the ring transactions, grey dashed arrows ordinary transactions into ring members. Edge width is proportional to the SEAL edge importance $I_{uv}$ of Eq.~\eqref{eq:explanation}; ring edges are annotated with the transaction day (d) and the importance.}
+\label{fig:ring}
+\end{figure}
+
+\SYNTEXT
+
+\subsection{Second real-world dataset: T-Finance}
+\label{subsec:tfinance}
+
+\begin{table}[!t]
+\centering
+\caption{Test results on T-Finance (GADBench splits 0--4, 40/20/40; mean $\pm$ s.d.). No timestamps are available, so HRAPE is disabled and temporal baselines are not applicable.}
+\label{tab:tfinance}
+\footnotesize
+\input{tables/tfinance.tex}
+\end{table}
+
+\TFTEXT
+
+\subsection{End-to-end latency}
+\label{subsec:latency}
+
+\begin{table}[!t]
+\centering
+\caption{End-to-end latency per request of $B$ transactions on CPU (\cpuName), in milliseconds: percentiles of the total and mean time of each stage (sample: 2-hop neighbourhood sampling with fan-out 25 and subgraph construction; forward: model; explain: reading top-5 features and top-3 edges from the masks, or running GNNExplainer for 100 iterations). tx/s: throughput. Peak resident memory of the process, including the in-memory graph: \peakRss{} MB.}
+\label{tab:latency}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\input{tables/latency.tex}
+\end{table}
+
+\LATTEXT
+
+\subsection{Case studies}
+\label{subsec:cases}
+
+\begin{table}[!t]
+\centering
+\caption{Explanations of four Elliptic test transactions by RTXGNN (seed 0). Feature groups: L = local, A = aggregated (the only semantics documented for the anonymised features). Score in parentheses: after removing the top-5 features.}
+\label{tab:cases}
+\footnotesize
+\input{tables/case_studies.tex}
+\end{table}
+
+\CASETEXT

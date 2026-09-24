@@ -1,132 +1,77 @@
-# RTXGNN: Real-Time eXplainable Graph Neural Network for Financial Fraud Detection
+# RTXGNN: a self-explaining temporal graph neural network for fraud detection
 
-A self-explainable temporal GNN architecture with regulatory-compliant explanations.
+Code, experiment scripts, result records and manuscript sources for
 
-## Overview
+> *A Self-Explaining Temporal Graph Learning Method for Low-Latency Financial Fraud Detection and Decision Support*
+> (revision of Decision Analytics Journal manuscript DAJOUR-D-26-00332).
 
-RTXGNN jointly learns **fraud prediction** and **multi-granularity explanations** on dynamic financial transaction graphs. Key design goals:
+RTXGNN scores transactions in a transaction graph and returns, from the same forward pass, an explanation:
+the top-k input features of the transaction and its most important incoming/outgoing transactions.
 
-- **< 50ms** end-to-end inference (prediction + explanation)
-- **Regulatory compliance**: GDPR Article 22, ECOA/FCRA reason codes
-- **Self-explainable**: no post-hoc explanation step — masks are generated inline during the forward pass
-- **Temporal awareness**: multi-scale encoding capturing hourly, daily, weekly, and monthly fraud patterns
+* **SEAL** (Self-Explainable Aggregation Layer): attention-based message passing whose messages are gated by
+  learned edge and node masks, preceded by a per-node feature mask on the raw inputs. The masks are the explanation.
+* **HRAPE** (Hierarchical Recency-Aware Positional Encoding): shift-invariant temporal encoding built from time
+  gaps (multi-scale sinusoids), a learnable recency bias of the attention, and transaction velocity.
+  It never encodes absolute time.
+* **Objective**: class-balanced cross-entropy + sufficiency (the hard top-k explanation alone reproduces the
+  prediction) + necessity (its complement is uninformative) + L1 mask sparsity, with a linear warm-up.
 
-## Architecture
-
-```
-INPUT → Temporal Encoding (HRAPE) → Self-Explainable Aggregation Layers (SEAL)
-                                              ↓
-                              Dual-Head Output (Prediction + Explanation)
-                                              ↓
-                              Regulatory Compliance Module
-                              (Reason Codes · GDPR Summary · Audit Trail)
-```
-
-### Core Components
-
-| Component | Description |
-|-----------|-------------|
-| **HRAPE** | Hierarchical Recency-Aware Positional Encoding — multi-scale temporal encoding with learnable Fourier features and recency-weighted attention |
-| **SEAL** | Self-Explainable Aggregation Layer — jointly generates node/edge/feature importance masks with information bottleneck regularization |
-| **Dual-Head** | Prediction head (Focal Loss) + Explanation head (reason code classification, subgraph scoring, confidence estimation) |
-| **Regulatory Module** | Maps technical explanations to ECOA/FCRA reason codes with GDPR Article 22 summaries and full audit trails |
-
-## Datasets
-
-| Dataset | Nodes | Edges | Description |
-|---------|-------|-------|-------------|
-| **Elliptic Bitcoin** | 203,769 | 234,355 | Real-world transaction graph with 49 temporal snapshots |
-| **YelpChi** | 45,954 | 3,846,979 | Review fraud network for domain generalization |
-| **Synthetic Money Laundering** | 5,000 | — | Injected fraud ring typologies on a scale-free graph |
-
-## Results
-
-### Elliptic Bitcoin Dataset
-
-| Model | F1-Score | AUC |
-|-------|----------|-----|
-| **RTXGNN (Ours)** | **0.5125** | **0.8662** |
-| MLP | 0.4538 | 0.8638 |
-| GAT | 0.4285 | 0.8659 |
-| GraphSAGE | 0.4141 | 0.8735 |
-| GCN | 0.2697 | 0.8217 |
-
-RTXGNN achieves the highest F1-score while maintaining competitive AUC, with superior temporal stability across future time steps (concept drift robustness).
-
-## Repository Structure
+## Repository layout
 
 ```
-.
-├── RTXGNN_Implementation.ipynb      # Full implementation: training, evaluation, experiments
-├── RTXGNN_Algorithm_Design.md       # Detailed algorithm design and pseudocode
-├── Section_Evaluation.tex           # LaTeX evaluation section for the paper
-├── literature_review.md             # Literature review and identified research gaps
-├── learning_curves.png              # Training loss and test F1 over epochs
-└── temporal_stability.png           # F1-score across test time steps
+rtxgnn/                  model and library code
+  model.py               HRAPE, Time2Vec (ablation), SEAL, RTXGNN
+  objective.py           training objective (balanced BCE, sufficiency, necessity, sparsity)
+  baselines.py           MLP, GCN, GraphSAGE, GAT, EvolveGCN-O, TGAT, TGN, APAN,
+                         CARE-GNN, PC-GNN, GAS, FRAUDRE, SEFraud (re-implementations)
+  tabular.py             logistic regression, random forest, XGBoost
+  data.py, graph.py      Elliptic / T-Finance loading, 2-hop region subgraphs
+  synthetic.py           synthetic temporal laundering benchmark (documented generator)
+  serving.py             request-level inference: neighbourhood sampling + explanation
+  explain.py             saliency, Integrated Gradients, GNNExplainer, fidelity metrics
+experiments/             one script per experiment; each appends JSON records to results/
+  run_elliptic.py        main comparison (10 seeds), ablations, regularisation, sensitivity
+  run_label_efficiency.py, run_retraining.py, run_explanations.py, run_synthetic.py,
+  run_tfinance.py, latency.py, run_case_studies.py
+  analyze.py             builds every table and manuscript/revision1/tables/numbers.tex
+  figures.py             builds the figures
+results/                 per-run JSON records (checkpoints and predictions are not versioned)
+manuscript/submission0/  manuscript as first submitted
+manuscript/revision1/    revised manuscript (main.tex) and response to reviewers (response/)
 ```
 
-## Key Research Contributions
+`legacy/` (notebook `RTXGNN_Implementation.ipynb`, `RTXGNN_Algorithm_Design.md`, draft evaluation section) documents the first version of the
+project and are kept for reference only. The notebook's Elliptic preprocessing used surrogate time steps and
+must not be used to reproduce results; use the scripts above.
 
-| Research Gap | RTXGNN Solution |
-|---|---|
-| No standardized XAI metrics for fraud | Fraud-specific evaluation (domain consistency, actionability, compliance score) |
-| No human-centered evaluation | Built-in analyst study protocol with validated dimensions |
-| Temporal explainability lacking | HRAPE + recency-weighted attention masks |
-| No ground-truth explanation datasets | Self-supervised explanation learning |
-| Regulatory non-compliance | Dedicated module for GDPR/ECOA/FCRA compliance |
-| Scalability limitations | Tiered async inference pipeline < 50ms |
-
-## Getting Started
+## Reproducing the results
 
 ```bash
-# Install dependencies
-pip install torch torch-geometric pandas numpy scikit-learn matplotlib
-
-# Open the notebook
-jupyter notebook RTXGNN_Implementation.ipynb
+pip install torch torch-geometric pandas scikit-learn xgboost networkx matplotlib scipy
+export PYTHONPATH=$PWD
+cd experiments
+python run_elliptic.py --models lr,rf,xgb,mlp,gcn,sage,gat,evolvegcn,tgat,tgn,apan,caregnn,pcgnn,gas,fraudre,sefraud,rtxgnn --seeds 0-9 --tag main
+python run_elliptic.py --models rtxgnn:no_hrape,rtxgnn:time2vec,rtxgnn:hrape_abs,rtxgnn:no_seal,rtxgnn:no_sparsity,rtxgnn:no_fidelity --seeds 0-4 --tag ablation
+python run_label_efficiency.py
+python run_retraining.py
+python run_explanations.py
+python run_synthetic.py
+python run_tfinance.py        # needs T-Finance from GADBench converted to data/tfin/tfinance.npz
+python latency.py --threads 1 && python latency.py --threads 4
+python run_case_studies.py
+python analyze.py && python figures.py
 ```
 
-The notebook covers:
-1. Dataset loading and preprocessing (Elliptic, YelpChi, Synthetic)
-2. Model training with curriculum learning
-3. Ablation studies
-4. Sensitivity, runtime, and temporal stability experiments
-5. t-SNE visualization of learned embeddings
+Elliptic is downloaded automatically through PyTorch Geometric (the official time step of every transaction is
+read from the raw CSV). All experiments run on CPU.
 
-## Training
+## Protocol in brief
 
-RTXGNN uses a **curriculum learning** strategy that gradually introduces explanation objectives:
+* Elliptic temporal split: train steps 1–30, validation 31–34, test 35–49; decision threshold chosen on validation.
+* Neural models: quantile-normalised features (fitted on training steps), hidden size 64, 2 layers, Adam,
+  early stopping on validation average precision. Tree ensembles use raw features.
+* 10 seeds; two-sided Wilcoxon signed-rank tests with Holm correction.
 
-```
-Epoch 0-5:   Prediction loss only
-Epoch 5-10:  + Explanation fidelity (λ=0.3)
-Epoch 10-20: + Sparsity + Temporal consistency
-Epoch 20+:   Full multi-task loss (prediction + explanation + sparsity + temporal + reason codes)
-```
+## License
 
-Loss function:
-
-$$\mathcal{L} = \mathcal{L}_{pred} + \lambda_1 \mathcal{L}_{exp} + \lambda_2 \mathcal{L}_{sparse} + \lambda_3 \mathcal{L}_{temporal} + \lambda_4 \mathcal{L}_{reason}$$
-
-## Inference
-
-Tiered explanation depth based on fraud score:
-
-| Score | Action | Explanation |
-|-------|--------|-------------|
-| < 0.3 | Approve | None (latency optimized) |
-| 0.3–0.7 | Review | Light (top-3 features + primary reason) |
-| ≥ 0.7 | Decline | Full async (subgraph + NL + regulatory output) |
-
-Target latency: **< 30ms** on GPU for real-time path.
-
-## Citation
-
-```bibtex
-@article{rtxgnn2024,
-  title   = {RTXGNN: Real-Time eXplainable Graph Neural Network for Financial Fraud Detection},
-  author  = {Dang, Vinh},
-  journal = {Applied Computing and Informatics},
-  year    = {2024}
-}
-```
+See `LICENSE`.
