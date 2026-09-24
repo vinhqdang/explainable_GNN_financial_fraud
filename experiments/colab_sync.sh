@@ -11,7 +11,7 @@ while true; do
     rm -f $DST/$f.colab.tmp
   done
   $(dirname "$0")/colab_fetch_artifacts.sh $S
-  for p in p1 p2 p3 p4 p5; do timeout 60 colab download -s $S /content/$p.log /tmp/logs/colab_$p.log >/dev/null 2>&1; done
+  for p in c1 c2; do timeout 60 colab download -s $S /content/$p.log /tmp/logs/colab_$p.log >/dev/null 2>&1; done
   timeout 60 colab sessions 2>&1 | grep -q "\[$S\]" && date +%T > /tmp/logs/colab_sync.last
   sleep ${SYNC_EVERY:-180}
 done

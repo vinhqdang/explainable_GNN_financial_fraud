@@ -1,16 +1,26 @@
 #!/bin/sh
-# Re-creates the Colab session and resumes the GPU jobs whenever the VM is lost.
+# Re-creates the Colab session and resumes the GPU jobs whenever the VM is lost
+# or the sync heartbeat is older than 10 minutes.
 export PATH=$HOME/.local/bin:$PATH
 HERE=$(cd $(dirname "$0") && pwd)
 S=$1; N=${2:-3}
 while true; do
-  # the server-side session list is authoritative (status may show cached metadata)
-  if ! timeout 90 colab sessions 2>&1 | grep -q "\[$S\]"; then
-    echo "$(date +%T) session $S lost"
-    for p in $(ps -eo pid,args | grep "[c]olab_sync.sh" | awk '{print $1}'); do kill $p; done
+  stale=0
+  if [ -f /tmp/logs/colab_sync.last ]; then
+    age=$(( $(date +%s) - $(stat -c %Y /tmp/logs/colab_sync.last) ))
+    [ $age -gt 600 ] && stale=1
+  fi
+  if [ $stale = 1 ] || ! timeout 90 colab sessions 2>&1 | grep -q "\\[$S\\]"; then
+    echo "$(date +%T) session $S lost or stale"
+    for p in $(pgrep -f "^/bin/sh .*colab_sync.sh"); do kill $p; done
+    timeout 120 colab stop -s $S < /dev/null >/dev/null 2>&1
     S=gpu$N; N=$((N+1))
+    touch /tmp/logs/colab_sync.last
     if timeout 600 colab new -s $S --gpu T4 < /dev/null; then
-      $HERE/colab_resume.sh $S && echo "$(date +%T) resumed on $S"
+      for i in 1 2 3; do
+        $HERE/colab_resume.sh $S && { echo "$(date +%T) resumed on $S"; break; }
+        sleep 30
+      done
     fi
   fi
   [ -f /tmp/colab_done ] && break
