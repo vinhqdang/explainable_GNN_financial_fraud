@@ -41,7 +41,7 @@ manuscript/revision1/    revised manuscript (main.tex) and response to reviewers
 ```
 
 `legacy/` (notebook `RTXGNN_Implementation.ipynb`, `RTXGNN_Algorithm_Design.md`, draft evaluation section) documents the first version of the
-project and are kept for reference only. The notebook's Elliptic preprocessing used surrogate time steps and
+project and is kept for reference only. The notebook's Elliptic preprocessing used surrogate time steps and
 must not be used to reproduce results; use the scripts above.
 
 ## Reproducing the results
