@@ -10,7 +10,8 @@ V = ("rtxgnn:full,rtxgnn:no_sparsity,rtxgnn:time2vec_abs,rtxgnn:no_suf,rtxgnn:no
 jobs = {
     "c1": f"{env} python run_elliptic.py --models {M} --seeds 2-4 --tag main_gpu --skip elliptic_main.jsonl --threads 1; "
           f"{env} python run_elliptic.py --models evolvegcn --seeds 0-9 --tag evo --threads 1; "
-          f"{env} python run_elliptic.py --models mlp,gcn,sage,gat,sefraud,rtxgnn --seeds 0 --tag raw --raw --threads 1",
+          f"{env} python run_elliptic.py --models mlp,gcn,sage,gat,sefraud,rtxgnn --seeds 0 --tag raw --raw --threads 1; "
+          f"{env} python run_tfinance.py --threads 1",
     "c2": f"{env} python run_retraining.py --threads 1; "
           f"{env} python run_elliptic.py --models {V} --seeds 0-2 --tag ablation2 --threads 1; "
           f"{env} python run_label_efficiency.py --threads 1",

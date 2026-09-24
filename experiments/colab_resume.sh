@@ -6,9 +6,11 @@ set -e
 export PATH=$HOME/.local/bin:$PATH
 S=$1; HERE=$(cd $(dirname "$0") && pwd)
 timeout 1200 colab exec -s $S -f $HERE/colab_remote_setup.py --timeout 1180
-for f in label_efficiency.jsonl retraining.jsonl elliptic_ablation2.jsonl elliptic_evo.jsonl elliptic_raw.jsonl elliptic_main_gpu.jsonl; do
+for f in label_efficiency.jsonl retraining.jsonl elliptic_ablation2.jsonl elliptic_evo.jsonl elliptic_raw.jsonl elliptic_main_gpu.jsonl tfinance.jsonl; do
   [ -s $HERE/../results/$f ] && timeout 120 colab upload -s $S $HERE/../results/$f /content/rtx/results/$f
 done
+echo 'import os; os.makedirs("/content/data/tfin", exist_ok=True)' | timeout 60 colab exec -s $S
+timeout 600 colab upload -s $S /tmp/data/tfin/tfinance.npz /content/data/tfin/tfinance.npz
 timeout 300 colab upload -s $S $HERE/../results/elliptic_main.jsonl /content/rtx/results/elliptic_main.jsonl
 timeout 120 colab exec -s $S -f $HERE/colab_remote_launch.py --timeout 100
 COLAB_SESSION=$S SYNC_EVERY=60 nohup $HERE/colab_sync.sh > /tmp/logs/colab_sync.log 2>&1 &
