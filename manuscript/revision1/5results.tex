@@ -15,7 +15,12 @@ Table~\ref{tab:main} reports the test results of all models over \nSeedsMain{} s
 \input{tables/main.tex}
 \end{table}
 
-\MAINTEXT
+RTXGNN reaches a test F1 of \rtxFone{}\,$\pm$\,\rtxFoneSd{} and an AP of \rtxAP{}. Among the twelve graph neural networks, only GAS obtains a practically identical F1 (\gasFone), and FRAUDRE and GAS obtain a practically identical AP (\fraudreAP{} and \gasAP). RTXGNN is ahead of all other GNNs on F1, including the general GNNs (GraphSAGE \sageFone, GCN \gcnFone, GAT \gatFone), the temporal GNNs (TGN \tgnFone, TGAT \tgatFone) and the fraud-specific models. In particular, RTXGNN improves on the other self-explaining model, SEFraud, by \deltaFOnesefraud{} F1 ($p=\prawFOnesefraud$, uncorrected) and \deltaAPsefraud{} AP ($p=\prawAPsefraud$). After Holm correction over the 16 comparisons, the F1 differences to the GNN baselines are no longer significant except for PC-GNN, while the AP differences to GCN, GAT, CARE-GNN and PC-GNN remain significant (Table~\ref{tab:main}).
+
+Two feature-only models remain strong competitors on Elliptic's engineered features. XGBoost obtains the highest F1 (\xgbFone) and AP (\xgbAP), significantly above RTXGNN. The random forest reaches F1 \rfFone{} and the same AP as RTXGNN (\rfAP), but its F1 varies considerably with the seed-dependent threshold ($\pm$0.05). The strength of tree ensembles on these features agrees with \citet{weber2019anti} and with the general finding of \citet{grinsztajn2022tree}. The Elliptic features already contain 72 aggregates of the one-hop neighbourhood, so much of the graph information is available to a feature-only model. The trees do not produce explanations over the relations between transactions, which is the purpose of RTXGNN. The MLP, which sees the same features without message passing, is \deltaFOnemlp{} F1 below RTXGNN.
+
+EvolveGCN-O is the weakest graph model (\evolvegcnFone). Its recurrent weight evolution has to be carried from the training period through all test snapshots without supervision. Because no transaction appears in more than one snapshot, the model cannot exploit the node-level continuity for which it was designed. The continuous-time models TGN and TGAT perform similarly to static GNNs, for the reasons discussed in Section~\ref{sec:related}.
+
 
 \subsection{What the scores mean operationally}
 \label{subsec:operational}
@@ -28,7 +33,7 @@ Table~\ref{tab:main} reports the test results of all models over \nSeedsMain{} s
 \input{tables/operational.tex}
 \end{table}
 
-\OPTEXT
+An F1 around 0.7 still means that errors are frequent. At the validation-chosen threshold, RTXGNN raises on average \rtxAlerts{} alerts in the test period, misses \rtxMissed{} of the \nTestIllicit{} illicit transactions (\rtxMissPct\%), and \rtxFalse{} of its alerts (\rtxFDRPct\%) concern licit transactions (Table~\ref{tab:operational}). As a stand-alone decision rule this would not be acceptable. The ranking, however, is highly informative for review queues with limited capacity: among the 500 highest-scored test transactions, \rtxPrecAtFive{} of those flagged by RTXGNN are illicit, and among the top 1,000 the proportion is \rtxPrecAtThousand. The differences between the strongest models appear mainly at the level of the automatic threshold, where XGBoost produces fewer false alerts. For a decision maker, the relevant choice is therefore the size of the review queue. The threshold should be set by the capacity of the investigation team and by the relative cost of a missed case and a false alert, not by maximising F1.
 
 \subsection{Ablation study}
 \label{subsec:ablation}
@@ -129,7 +134,15 @@ Table~\ref{tab:label_efficiency} and Figure~\ref{fig:label} report the effect of
 \label{fig:fidelity}
 \end{figure}
 
-\EXPTEXT
+Table~\ref{tab:explanations} and Figure~\ref{fig:fidelity} compare the feature explanations of 600 test transactions (300 illicit, 300 licit) for five independently trained models. The post-hoc explainers are applied to the same RTXGNN models, so differences reflect the explainers, not the predictors.
+
+\paragraph{Sufficiency} Keeping only the ten features selected by SEAL changes the predicted-class probability by \fidMmask{} on average (Fid$^-$@10). This is better than saliency (\fidMsaliency) and close to Integrated Gradients (\fidMig), and it is far better than a random selection (\fidMrandom) and than SEFraud's masks on SEFraud (\fidMsefraudmask). The sufficiency term is responsible for this property. The same architecture trained without $\mathcal{L}_{suf}$ and $\mathcal{L}_{nec}$ yields masks with Fid$^-$@10 of \fidMNofidelitymask, three times worse.
+
+\paragraph{Necessity} Removing the ten features selected by SEAL lowers the predicted-class probability by only \fidPmask{} (Fid$^+$@10). This is a clear weakness. Integrated Gradients (\fidPig) and in particular GNNExplainer (\fidPgnnexplainer) identify features whose removal changes the prediction much more. The Elliptic features are highly redundant (72 of them aggregate the local features of neighbours), and a model can often recover the same information from features outside a ten-feature explanation. The necessity term constrains the complement of the whole hard view, including the edge view, and it is not sufficient to make the top ten features individually indispensable. GNNExplainer's high scores come at a price: it takes \fidTimegnnexplainer{} ms per transaction, about 300 times more than reading SEAL's masks (\fidTimemask{} ms), and its explanations are unstable. Its top-10 features have a Jaccard similarity of only \stabgnnexplainer{} under a small input perturbation, against \stabmask{} for SEAL. Integrated Gradients offers a middle ground at \fidTimeig{} ms.
+
+\paragraph{Class-wise behaviour and agreement across models} Table~\ref{tab:explanations_class} shows that SEAL's sufficiency is similar for illicit and licit transactions, whereas Integrated Gradients and SEFraud's masks are much more sufficient for one class than for the other. Masks of independently trained RTXGNN models agree only weakly on the top-10 features (mean Jaccard similarity \crossSeedSeal, against \crossSeedRandom{} for random rankings), which again reflects the redundancy of the features. An analyst should therefore read an explanation as the features the \emph{deployed} model relied on, not as a model-independent property of the transaction.
+
+In summary, SEAL provides explanations that are sufficient, stable and essentially free at inference time, but weakly necessary. For the transactions an analyst actually investigates, a more expensive post-hoc explainer can be run in addition when a stronger counterfactual statement is needed.
 
 \subsection{Controlled evaluation on the synthetic benchmark}
 \label{subsec:synthetic}

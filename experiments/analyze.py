@@ -99,6 +99,8 @@ def main_table():
             x, y = paired(ref, R[m], met)
             if len(x) >= 5 and not np.allclose(x - y, 0):
                 raw[m] = wilcoxon(x, y).pvalue
+                macro(f"praw{met.upper()}{m}", f"{raw[m]:.3f}")
+                macro(f"delta{met.upper()}{m}", f"{np.mean(x) - np.mean(y):+.3f}")
         pv[met] = holm(raw) if raw else {}
     lines = ["\\begin{tabular}{lccccc}", "\\toprule",
              "Model & F1 & Precision & Recall & AUC & AP\\\\", "\\midrule"]
@@ -133,8 +135,8 @@ def main_table():
         macro("rtxMissPct", f"{100*(1-mean('rtxgnn','recall')):.0f}")
         macro("rtxFDRPct", f"{100*(1-mean('rtxgnn','precision')):.0f}")
         macro("nSeedsMain", str(len(R["rtxgnn"])))
-    for m in ("rf", "xgb", "sefraud", "sage", "gat", "mlp", "tgat", "gcn"):
-        if m in R:
+    for m in R:
+        if m != "rtxgnn":
             macro(f"{m}Fone", f"{mean(m,'f1'):.3f}"); macro(f"{m}AP", f"{mean(m,'ap'):.3f}")
     gn = [m for m in GNNS if m in R]
     if gn:
