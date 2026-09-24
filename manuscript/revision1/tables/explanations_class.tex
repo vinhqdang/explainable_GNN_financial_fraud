@@ -1,0 +1,16 @@
+\begin{tabular}{lcccc}
+\toprule
+ & \multicolumn{2}{c}{illicit targets} & \multicolumn{2}{c}{licit targets}\\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Explainer & Fid$^{+}$@10 & Fid$^{-}$@10 & Fid$^{+}$@10 & Fid$^{-}$@10\\
+\midrule
+SEAL masks (self-explaining) & 0.027 & 0.088 & 0.036 & 0.065\\
+Saliency (post hoc) & 0.067 & 0.097 & 0.045 & 0.084\\
+Integrated Gradients (post hoc) & 0.226 & 0.037 & 0.057 & 0.101\\
+GNNExplainer (post hoc) & 0.307 & -0.014 & 0.251 & -0.050\\
+Random ranking & 0.010 & 0.404 & 0.011 & 0.165\\
+SEFraud masks (on SEFraud) & 0.016 & 0.359 & 0.017 & 0.042\\
+SEAL masks, trained w/o $\mathcal{L}_{suf},\mathcal{L}_{nec}$ & 0.027 & 0.325 & 0.062 & 0.142\\
+SEAL masks, trained w/o $\mathcal{L}_{sp}$ & 0.020 & 0.129 & 0.014 & 0.037\\
+\bottomrule
+\end{tabular}

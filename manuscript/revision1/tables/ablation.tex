@@ -1,0 +1,21 @@
+\begin{tabular}{lcccc}
+\toprule
+Variant & seeds & F1 & AP & $\Delta$F1 (paired $p$)\\
+\midrule
+\multicolumn{5}{l}{\textit{Primary study (5 seeds)}}\\
+RTXGNN (full) & 5 & 0.696\,$\pm$\,0.049 & 0.769\,$\pm$\,0.009 & --\\
+without HRAPE & 5 & 0.666\,$\pm$\,0.035 & 0.769\,$\pm$\,0.018 & -0.030 (0.26)\\
+HRAPE $\rightarrow$ Time2Vec (gaps) & 5 & 0.629\,$\pm$\,0.028 & 0.766\,$\pm$\,0.010 & -0.067 (0.04)\\
+HRAPE + absolute-time encoding & 5 & 0.647\,$\pm$\,0.080 & 0.773\,$\pm$\,0.009 & -0.050 (0.33)\\
+without SEAL masks (plain attention) & 5 & 0.704\,$\pm$\,0.028 & 0.777\,$\pm$\,0.013 & +0.008 (0.76)\\
+without $\mathcal{L}_{sp}$ & 4 & 0.716\,$\pm$\,0.020 & 0.780\,$\pm$\,0.013 & +0.036 (0.08)\\
+without $\mathcal{L}_{suf}$ and $\mathcal{L}_{nec}$ & 4 & 0.719\,$\pm$\,0.051 & 0.774\,$\pm$\,0.008 & +0.039 (0.16)\\
+\midrule\multicolumn{5}{l}{\textit{Secondary study (3 seeds, trained on GPU; own reference)}}\\
+RTXGNN (full) & 1 & 0.694 & 0.772 & --\\
+Time2Vec on absolute time & 1 & 0.669 & 0.756 & -0.024 (nan)\\
+without $\mathcal{L}_{suf}$ & 1 & 0.735 & 0.765 & +0.042 (nan)\\
+without $\mathcal{L}_{nec}$ & 1 & 0.722 & 0.769 & +0.028 (nan)\\
+without curriculum & 1 & 0.650 & 0.749 & -0.044 (nan)\\
+focal loss instead of balanced BCE & 1 & 0.692 & 0.754 & -0.002 (nan)\\
+\bottomrule
+\end{tabular}

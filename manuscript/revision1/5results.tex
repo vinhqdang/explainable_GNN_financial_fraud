@@ -75,7 +75,11 @@ Table~\ref{tab:main} reports the test results of all models over \nSeedsMain{} s
 \label{fig:temporal}
 \end{figure}
 
-\TEMPTEXT
+Table~\ref{tab:temporal} and Figure~\ref{fig:temporal} break the test period down by time step. The period has two clearly different phases. In steps 35--42, RTXGNN reaches a per-step F1 between 0.66 and 0.94 (mean \rtxEarlyFone), with recall above 0.8 in most steps, and the random forest behaves very similarly. From step 43 onwards all models fail: the mean per-step F1 of RTXGNN over steps 43--49 is \rtxLateFone{}, and that of the random forest is \rfStaticLateFone. \citet{weber2019anti} attribute this collapse to the shutdown of a large dark market after step 42. At the same time, the number of illicit transactions per step falls from between 33 and 239 to between 2 and 56, so the late steps carry only \illLate{} of the \nTestIllicit{} illicit test transactions (\illLatePct\%).
+
+This explains why a near-zero F1 in the late steps is compatible with a pooled test F1 of about 0.7. The pooled F1 is computed once over all test transactions and is therefore dominated by the \illEarly{} illicit transactions of steps 35--42. The unweighted mean of the fifteen per-step F1 scores of RTXGNN is only \rtxMeanStepFone.
+
+\paragraph{Retraining with a one-step label delay} To assess how much of the collapse a deployment could recover, we refit the models before every test step $t$ on all labelled steps up to $t-5$, validate and choose the threshold on steps $t-4$ to $t-1$, and score step $t$. Labels thus become available one step after the transactions occur. Neural models are warm-started from the previous step's model. Retraining improves the early steps slightly (RTXGNN \rtxgnnRetrEarlyFone, random forest \rfRetrEarlyFone). In the late steps it raises the mean F1 of RTXGNN from \rtxgnnStaticLateFone{} to \rtxgnnRetrLateFone{} and that of the random forest from \rfStaticLateFone{} to \rfRetrLateFone. The recovery is real but partial. Once the illicit activity changes, a model can only learn the new pattern after labelled examples of it exist, and the late steps contain very few of them. Retraining is therefore necessary but not sufficient, and a deployment also needs drift monitoring and complementary controls (Section~\ref{subsec:deployment}).
 
 \subsection{Label efficiency}
 \label{subsec:label}
@@ -96,7 +100,7 @@ Table~\ref{tab:main} reports the test results of all models over \nSeedsMain{} s
 \label{fig:label}
 \end{figure}
 
-\LABTEXT
+Table~\ref{tab:label_efficiency} and Figure~\ref{fig:label} report the effect of training with a stratified fraction of the labels. Each fraction is sampled within every training time step and class and repeated with 5 subsets; the validation and test sets are never subsampled. RTXGNN's F1 increases monotonically with the number of labels. With 10\% of the labels (2,689 transactions, 297 illicit) it keeps \lertxgnnOneZeroPct\% of its full-label F1 (\lertxgnnOneZero{} versus \lertxgnnOneZeroZero{}), and with 50\% it keeps \lertxgnnFiveZeroPct\%. The random forest is more sensitive to the particular subset: its standard deviation across subsets is larger than that of RTXGNN at every fraction below 100\% (up to three times larger), and its F1 is not monotone in the label fraction. The MLP is insensitive to the number of labels but stays at a lower level throughout. Because the full-label runs of this experiment were trained on a GPU with 5 seeds, their F1 (\lertxgnnOneZeroZero) differs slightly from Table~\ref{tab:main}.
 
 \subsection{Faithfulness and cost of the explanations}
 \label{subsec:explanations}
@@ -150,11 +154,15 @@ Table~\ref{tab:main} reports the test results of all models over \nSeedsMain{} s
 \begin{figure}[!t]
 \centering
 \includegraphics[width=0.8\textwidth]{figures/fraud_ring.pdf}
-\caption{A laundering ring detected by RTXGNN on the synthetic benchmark (graph 0, default setting). Red nodes are ring members, blue nodes their other counterparties. Node labels give the predicted probability; the outlined node is a test account. Red solid arrows are the ring transactions, grey dashed arrows ordinary transactions into ring members. Edge width is proportional to the SEAL edge importance $I_{uv}$ of Eq.~\eqref{eq:explanation}; ring edges are annotated with the transaction day (d) and the importance.}
+\caption{A laundering ring detected by RTXGNN on the synthetic benchmark (graph 0, default setting). Red: ring members with their predicted probability; blue: up to three ordinary counterparties per member; outlined: a test account. Red solid arrows are the ring transactions (labelled with the transaction day and the relative importance), grey dashed arrows ordinary transactions into ring members. Arrow width is the relative SEAL importance of a transaction, i.e.\ its share of the total importance $\sum_u I_{uv}$ of all transactions received by the member $v$ (Eq.~\ref{eq:explanation}).}
 \label{fig:ring}
 \end{figure}
 
-\SYNTEXT
+The synthetic benchmark isolates the two signals that Elliptic cannot provide: laundering rings whose members have no distinguishing features, and decoy cycles that can only be told apart by the timing of their hops (Table~\ref{tab:synthetic}). As intended, the task is hard. Feature-only models reach F1 below 0.5 in the default setting, since the features carry only indirect information (ring members have two extra transactions). Graph models improve on this.
+
+The temporal mechanism helps where timing matters. In the default setting, RTXGNN (F1 \syndefaultrtxgnn) outperforms its variants without HRAPE (\syndefaultrtxgnnnohrape) and with Time2Vec on the same time gaps (\syndefaultrtxgnntimeTwovec). TGAT, whose time encoding is applied to every message, is the strongest model in this setting (\syndefaulttgat). When decoys are absent, so that the cycle structure alone identifies the rings, RTXGNN and its variant without SEAL masks are the best models (\synnodecoyrtxgnn). The 5\% label-noise setting is hard for all models (F1 about 0.4). The wide-burst setting leaves every static model unchanged, because only transaction times differ, which confirms that the static baselines cannot see timing.
+
+\paragraph{Ground-truth evaluation of edge explanations} Because the planted ring transactions are known, the synthetic data allow a direct test of the edge explanations (Table~\ref{tab:synthetic_edges}). For each correctly detected ring member, we rank its incoming transactions by SEAL's edge importance $I_{uv}$ (Eq.~\ref{eq:explanation}) and compute the AUC for identifying its two ring transactions. SEAL's importances reach an AUC of \edgeAucdefaultrtxgnnseal{} in the default setting and \edgeAucwideburstrtxgnnseal{} in the wide-burst setting. This is higher than GNNExplainer applied to the same models (\edgeAucdefaultrtxgnngnnexplainer{} and \edgeAucwideburstrtxgnngnnexplainer), than the raw attention weights (\edgeAucdefaultrtxgnnattention{} and \edgeAucwideburstrtxgnnattention), and than random scores (about 0.5). Over all \ringNdet{} ring members detected by the seed-0 model, the most important incoming transaction is a ring transaction in \ringHitPct\% of the cases. Figure~\ref{fig:ring} shows one ring. All its hops happen within two days, they receive most of the importance of their receiving accounts, and the ordinary transactions of the same accounts receive almost none. The variation of the edge AUC across graphs is large (standard deviations of about 0.2--0.3), so these results show a clear tendency rather than a uniform effect.
 
 \subsection{Second real-world dataset: T-Finance}
 \label{subsec:tfinance}

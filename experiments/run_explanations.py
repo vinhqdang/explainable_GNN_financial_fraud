@@ -51,6 +51,7 @@ if __name__ == "__main__":
     ap.add_argument("--seeds", default="0-4")
     ap.add_argument("--n", type=int, default=300)
     ap.add_argument("--threads", type=int, default=2)
+    ap.add_argument("--models", default="rtxgnn,sefraud,rtxgnn_no_fidelity,rtxgnn_no_sparsity")
     a = ap.parse_args()
     torch.set_num_threads(a.threads)
     d = elliptic()
@@ -63,11 +64,17 @@ if __name__ == "__main__":
     b, pos = disjoint_batch(dev, targets)
     out_path = os.path.join(RESULTS, "explanations.jsonl")
     lo, hi = [int(s) for s in a.seeds.split("-")]
+    done = set()
+    if os.path.exists(out_path):
+        for l in open(out_path):
+            r = json.loads(l); done.add((r["model"], r["seed"]))
     masks_by_seed = {}
     for seed in range(lo, hi + 1):
-        for name in ("rtxgnn", "sefraud", "rtxgnn_no_fidelity", "rtxgnn_no_sparsity"):
+        for name in a.models.split(","):
             ck = os.path.join(RESULTS, "ckpt", f"{name}_s{seed}.pt")
             if not os.path.exists(ck):
+                continue
+            if (name, seed) in done and name != "rtxgnn":
                 continue
             model = load(name, seed, d.x.size(1))
             with torch.no_grad():
@@ -80,6 +87,9 @@ if __name__ == "__main__":
             b2.x = b.x.clone()
             b2.x[pos] = b.x[pos] + 0.05 * torch.randn(len(pos), b.x.size(1), generator=gen)
             attrs2, _ = explainers(model, b2, pos, cls, name == "rtxgnn")
+            if (name, seed) in done:
+                masks_by_seed[seed] = attrs["mask"]
+                continue
             for ex, at in attrs.items():
                 fid = fidelity(model, b, pos, at, KS, cls)
                 row = dict(model=name, explainer=ex, seed=seed, time_per_target_ms=1000 * tm[ex] / len(pos),
