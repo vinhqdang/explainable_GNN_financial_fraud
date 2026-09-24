@@ -210,3 +210,13 @@ __marimo__/
 results/preds/
 results/ckpt/
 __pycache__/
+
+# LaTeX build artefacts
+*.aux
+*.bbl
+*.blg
+*.out
+*.spl
+*.toc
+manuscript/revision1/main.pdf
+manuscript/revision1/response/response.pdf
