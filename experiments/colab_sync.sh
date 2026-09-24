@@ -10,7 +10,8 @@ while true; do
       [ -s $DST/$f.colab.tmp ] && mv $DST/$f.colab.tmp $DST/$f
     rm -f $DST/$f.colab.tmp
   done
-  for p in p1 p2 p3; do timeout 60 colab download -s $S /content/$p.log /tmp/logs/colab_$p.log >/dev/null 2>&1; done
+  $(dirname "$0")/colab_fetch_artifacts.sh $S
+  for p in p1 p2 p3 p4 p5; do timeout 60 colab download -s $S /content/$p.log /tmp/logs/colab_$p.log >/dev/null 2>&1; done
   timeout 60 colab sessions 2>&1 | grep -q "\[$S\]" && date +%T > /tmp/logs/colab_sync.last
   sleep ${SYNC_EVERY:-180}
 done
