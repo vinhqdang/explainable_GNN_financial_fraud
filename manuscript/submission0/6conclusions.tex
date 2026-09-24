@@ -1,0 +1,31 @@
+\section{Conclusions}
+\label{sec:conclusions}
+
+This paper introduced RTXGNN, a self-explainable graph neural network framework 
+for real-time financial fraud detection that treats interpretability as a 
+first-class design requirement rather than a post-hoc addition. The central 
+finding is that intrinsic explainability and predictive accuracy are not in 
+tension: when incorporated during training, sparsity-driven interpretability 
+constraints act as domain-informed regularization that benefits both objectives 
+simultaneously.
+
+Three limitations bound the current results and define the agenda for future 
+work. First, evaluation is concentrated on the Elliptic Bitcoin dataset; 
+validation on card-present fraud, ACH transfers, and decentralized finance 
+settings is necessary before broad deployment claims can be made. Second, no 
+user study with practicing fraud analysts has been conducted, leaving open the 
+question of whether SEAL's outputs meaningfully support investigative decisions 
+in practice. Third, the framework is vulnerable to abrupt concept drift, as 
+demonstrated by the sharp performance collapse at time step 42; continual 
+learning mechanisms or online retraining protocols are required for sustained 
+production robustness.
+
+Promising directions for extending this work include adaptation to 
+continuous-time dynamic graphs, integration of causal explanation frameworks 
+to move beyond associative masks, federated variants enabling privacy-preserving 
+collaboration across institutions, and adversarial robustness evaluation against 
+adaptive fraudsters who may exploit known explanation mechanisms.
+
+\paragraph{Code Availability.} The implementation of RTXGNN is publicly 
+available at \url{https://github.com/vinhqdang/explainable_GNN_financial_fraud} 
+to facilitate reproducibility and future research.

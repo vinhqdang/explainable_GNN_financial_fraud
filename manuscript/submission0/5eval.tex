@@ -1,0 +1,36 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Regulatory Compliance and Explainability}
+\label{subsec:regulatory_compliance}
+
+RTXGNN's intrinsic explainability mechanism directly addresses the transparency requirements imposed on automated financial decision-making systems. GDPR Article 22 prohibits solely automated decisions with significant effects unless accompanied by meaningful information about the underlying logic. SEAL's multi-granularity explanations—covering feature, node, edge, and temporal importance—satisfy this requirement without post-hoc overhead. While the academic debate over whether GDPR creates an enforceable right to explanation remains unresolved \citep{wachter2017righttoexplanation, selbst2017meaningful, sargeant2026mind}, regulatory practice increasingly demands transparency regardless of legal interpretation.
+
+In the United States, the Equal Credit Opportunity Act \citep{ecoa1974} and the Consumer Financial Protection Bureau's 2022 circular explicitly prohibit the use of complex algorithms when doing so prevents providing specific adverse action reasons—a direct challenge to black-box deployments. RTXGNN addresses this by surfacing ranked feature identifiers (e.g., Features 51, 54, 52 for Transaction 145713) that can be mapped to business-interpretable descriptions maintained by the institution. Similar transparency expectations apply under FATF guidance\footnote{\url{https://www.fatf-gafi.org/en/publications/Fatfrecommendations/Guidance-rba-virtual-assets-2021.html}} and the MiCA regulation \footnote{\url{https://www.esma.europa.eu/esmas-activities/digital-finance-and-innovation/markets-crypto-assets-regulation-mica}}, where automated flagging of suspicious cryptocurrency transactions must be auditable.
+
+An important practical gap remains, however: machine-generated feature importance scores are not self-interpreting. Financial institutions must maintain mapping tables from model feature indices to domain-meaningful attributes before RTXGNN's outputs fully satisfy regulatory scrutiny. Bridging this gap requires organizational investment alongside the technical solution.
+
+\subsection{Explainability as Regularization}
+\label{subsec:explainability_tradeoff}
+
+The dominant assumption in explainable AI is that interpretability constrains model capacity, creating an inherent accuracy trade-off. RTXGNN's ablation results challenge this assumption. The sparsity loss—whose primary purpose is to produce concise, human-readable explanations—delivers the largest single performance gain among all components. This occurs because sparse masks force the model to commit to a small set of discriminative signals rather than exploiting distributed, low-confidence correlations that generalize poorly. In a severely imbalanced setting, this selective pressure mitigates overfitting to the majority class without requiring additional architectural complexity.
+
+This reframes explainability not as a constraint imposed on a trained model, but as a training-time inductive bias that improves the learned representation. Post-hoc methods such as GNNExplainer \citep{ying2019gnnexplainer} and SubgraphX \citep{yuan2021subgraphx} cannot replicate this effect because they optimize explanations after the model has already converged; the model's internal representations remain unaffected. RTXGNN demonstrates that incorporating interpretability objectives during training yields benefits post-hoc methods structurally cannot provide.
+
+\subsection{Deployment Considerations}
+\label{subsec:deployment}
+
+The temporal stability results reveal a practical boundary for RTXGNN's deployment. The model generalizes well to gradual distributional change but fails under abrupt regime shifts—a limitation shared by all static trained models. In production, this implies that monitoring systems must track per-step performance and trigger retraining before degradation compounds. The label efficiency results are directly relevant here: retraining on as little as 10\% of new labeled transactions recovers the majority of full-supervision performance, making frequent update cycles operationally feasible.
+
+At institutional scale, GPU-batched inference sustains sub-millisecond per-transaction latency, supporting real-time deployment. Following the Lambda architecture pattern of systems such as BRIGHT \citep{lu2022bright}, pre-computing embeddings for stable entities in batch pipelines while reserving online inference for new transactions reduces computational load without sacrificing explanation capability. RTXGNN is best positioned as a complement to existing rule-based systems rather than a replacement: graph-based reasoning captures relational and temporal fraud signals that rules struggle to encode, while rules provide deterministic coverage for known typologies.
+
+\subsection{Limitations}
+\label{subsec:limitations}
+
+Three limitations warrant explicit acknowledgment. First, evaluation is primarily conducted on the Elliptic Bitcoin dataset, whose characteristics—pseudonymous addresses, public blockchain, UTXO transaction model — differ substantially from card-present fraud, ACH transfers, or Ethereum-based decentralized finance. Generalizability to these settings requires dedicated validation.
+
+Second, explanation quality is assessed through automated fidelity metrics and illustrative case studies. No user study with practicing fraud analysts has been conducted to verify that SEAL's outputs meaningfully support investigative decisions or satisfy regulators in practice. Cherif et al.'s systematic review \citep{cherif2024survey} identifies this human evaluation gap as field-wide; addressing it is a necessary step before making strong compliance claims.
+
+Third, scalability to billion-node institutional graphs remains undemonstrated. The current architecture requires graph partitioning, distributed training infrastructure, and approximate neighborhood sampling strategies not evaluated here.
+
+Future work should prioritize: human-centered evaluation with domain experts; adversarial robustness against feature manipulation by adaptive fraudsters; continual learning mechanisms for handling abrupt concept drift without full retraining; and federated variants enabling cross-institutional collaboration under data privacy constraints.

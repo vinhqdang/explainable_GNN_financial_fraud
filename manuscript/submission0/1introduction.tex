@@ -1,0 +1,102 @@
+\section*{List of Abbreviations}
+
+\begin{center}
+\begin{longtable}{ll}
+\caption{List of abbreviations used in this paper.}
+\label{tab:abbreviations} \\
+
+\hline
+\textbf{Abbreviation} & \textbf{Full Term} \\
+\hline
+\endfirsthead
+
+\hline
+\textbf{Abbreviation} & \textbf{Full Term} \\
+\hline
+\endhead
+
+\hline
+\multicolumn{2}{r}{\textit{Continued on next page}} \\
+\endfoot
+
+\hline
+\endlastfoot
+
+\multicolumn{2}{l}{\textit{Regulatory and Legal}} \\
+AML/CFT   & Anti-Money Laundering / Countering the Financing of Terrorism \\
+ECOA      & Equal Credit Opportunity Act \\
+FATF      & Financial Action Task Force \\
+GDPR      & General Data Protection Regulation \\
+MiCA      & Markets in Crypto-Assets Regulation \\
+UTXO      & Unspent Transaction Output \\
+\hline
+\multicolumn{2}{l}{\textit{Machine Learning and AI}} \\
+AUC       & Area Under the Receiver Operating Characteristic Curve \\
+GCN       & Graph Convolutional Network \\
+GNN       & Graph Neural Network \\
+GAT       & Graph Attention Network \\
+GRU       & Gated Recurrent Unit \\
+KL        & Kullback--Leibler (divergence) \\
+LSTM      & Long Short-Term Memory \\
+MLP       & Multi-Layer Perceptron \\
+ReLU      & Rectified Linear Unit \\
+RNN       & Recurrent Neural Network \\
+t-SNE     & t-distributed Stochastic Neighbor Embedding \\
+XAI       & Explainable Artificial Intelligence \\
+\hline
+\multicolumn{2}{l}{\textit{Proposed Methods and Components}} \\
+RTXGNN & Real-Time Explainable Graph Neural Network (our proposal)\\
+HRAPE     & Hierarchical Recency-Aware Positional Encoding \\
+RTXGNN   & Real-Time Explainable Graph Neural Network \\
+SEAL      & Self-Explainable Aggregation Layer \\
+\hline
+\multicolumn{2}{l}{\textit{Baselines and Related Methods}} \\
+CARE-GNN  & Camouflage-Resistant Graph Neural Network \\
+DGA-GNN   & Dynamic Grouping Aggregation Graph Neural Network \\
+DySAT     & Dynamic Self-Attention Network \\
+PC-GNN    & Pick-and-Choose Graph Neural Network \\
+SEFraud   & Self-Explainable Fraud Detection \\
+\hline
+\multicolumn{2}{l}{\textit{General}} \\
+FP16      & 16-bit Floating Point (half precision) \\
+GPU       & Graphics Processing Unit \\
+
+\end{longtable}
+\end{center}
+
+\section{Introduction}
+
+The global cryptocurrency market, valued at over \$2.5 trillion as of 2024, has become a focal point for sophisticated financial crime, with illicit transactions estimated at \$24.2 billion annually\footnote{\url{https://go.chainalysis.com/crypto-crime-2024.html}}. Unlike traditional banking systems with centralized oversight, blockchain networks present unique challenges for fraud detection: pseudonymous transactions, irreversible transfers, and complex networks of interrelated entities that fraudsters exploit to obfuscate illicit activities. As regulatory frameworks worldwide tighten—exemplified by the EU's Markets in Crypto-Assets (MiCA) regulation and the Financial Action Task Force's guidance on virtual assets—financial institutions face mounting pressure to deploy fraud detection systems that are not only accurate but also transparent and explainable\footnote{\url{https://www.fatf-gafi.org/en/publications/Fatfrecommendations/Guidance-rba-virtual-assets-2021.htm}}\footnote{\url{https://www.esma.europa.eu/esmas-activities/digital-finance-and-innovation/markets-crypto-assets-regulation-mica}}.
+
+Graph Neural Networks (GNNs) have emerged as the dominant paradigm for financial fraud detection, leveraging the relational structure inherent in transaction networks to achieve superior performance over traditional machine learning approaches. Building upon foundational architectures such as Graph Convolutional Networks \citep{kipf2017gcn, asiri2025graph}, Graph Attention Networks \citep{velickovic2018gat, fu2026phishing}, and GraphSAGE \citep{hamilton2017graphsage, tang2025application}, specialized fraud detection methods have demonstrated substantial improvements. Recent architectures such as CARE-GNN \citep{dou2020caregnn}, which addresses camouflaged fraudsters through reinforcement learning-based neighbor selection, and PC-GNN \citep{liu2021pcgnn}, which tackles severe class imbalance through label-balanced sampling, routinely achieve AUC scores above 0.93 on benchmark datasets. However, this predictive power comes at a critical cost: \textit{explainability}. The "black-box" nature of GNNs fundamentally conflicts with regulatory requirements such as GDPR Article 22, which mandates "meaningful information about the logic involved" in automated decisions, and the Equal Credit Opportunity Act (ECOA), which requires specific reasons for adverse actions \citep{ecoa1974}.
+
+The explainability challenge in GNN-based fraud detection manifests in three dimensions. \textit{First}, existing post-hoc explanation methods—such as GNNExplainer \citep{ying2019gnnexplainer} and PGExplainer \citep{luo2020pgexplainer}—require separate optimization procedures that consume 50-200ms per explanation, rendering them impractical for real-time fraud analysis processing millions of daily transactions \citep{lu2022bright}. \textit{Second}, these methods assume static graphs and cannot explain which temporal patterns triggered predictions—a critical gap given that fraudsters explicitly exploit temporal dynamics through velocity attacks, dormant account reactivation, and coordinated timing \citep{weber2019anti}. \textit{Third}, the field suffers from an "evaluation vacuum": existing evaluation methods for GNN explanations often rely on problematic ground-truth comparisons that can be fundamentally misleading \citep{faber2021groundtruth}, yet no standardized framework exists to assess what constitutes a "good" explanation in fraud investigation contexts.
+
+Recent research has begun addressing these limitations through self-explainable architectures that generate interpretations intrinsically during the prediction process. SEFraud \citep{li2024sefraud}, deployed at the Industrial and Commercial Bank of China (ICBC), represents a breakthrough by jointly learning prediction and interpretation through learnable feature and edge masks, achieving millisecond-level explanation generation while maintaining detection accuracy with 97\% AUC and 0.4ms inference time. However, SEFraud operates on static graphs and lacks temporal awareness—a significant limitation given that financial fraud patterns evolve continuously. Temporal GNN architectures for general domains exist, such as EvolveGCN \citep{pareja2020evolvegcn}, which uses RNNs to evolve GNN parameters over time, and ROLAND \citep{you2022roland}, which enables incremental training for dynamic graphs. However, fraud-specific temporal explainability methods remain nascent, with current approaches unable to differentiate the importance of multiple events between node pairs based on timing.
+
+\subsection*{Research Objective and Approach}
+
+This paper addresses a critical gap in fraud detection systems: the inability to simultaneously achieve high prediction accuracy, real-time inference, and regulatory-compliant explainability in temporal transaction networks. Current approaches face a fundamental trilemma—high-performing GNNs lack transparency, post-hoc explanation methods introduce prohibitive latency for production deployment, and existing self-explainable models ignore temporal dynamics essential for detecting evolving fraud patterns. Our objective is to develop an intrinsically interpretable GNN framework that \textit{jointly} optimizes fraud detection accuracy and explanation quality in real-time while capturing multi-scale temporal patterns that characterize cryptocurrency fraud.
+
+To achieve this objective, we introduce \textbf{RTXGNN (Real-Time Explainable Graph Neural Network)}, a novel framework that unifies temporal awareness with intrinsic explainability for cryptocurrency fraud detection. RTXGNN addresses the identified gaps through two core innovations:
+
+\begin{enumerate}
+    \item \textbf{Hierarchical Recency-Aware Positional Encoding (HRAPE)}: A temporal encoding scheme that captures multi-scale dynamics by combining exponential decay functions for recency weighting with sinusoidal encodings for cyclical patterns (hour-of-day, day-of-week). Unlike simple timestamp concatenation or time-delta features used in prior temporal graph methods \citep{sankar2020dysat}, HRAPE provides a continuous, learnable representation that enables the model to distinguish fraud patterns that manifest at different temporal scales.
+    
+    \item \textbf{Self-Explainable Aggregation Layer (SEAL)}: An attention-based message-passing mechanism that learns sparse, differentiable masks for nodes, edges, and features during aggregation. By incorporating sparsity regularization into the training objective, SEAL generates concise, interpretable explanations without requiring post-hoc optimization, achieving the real-time performance necessary for production deployment while avoiding the computational overhead of methods like GNNExplainer \citep{ying2019gnnexplainer}.
+\end{enumerate}
+
+We evaluate RTXGNN on the Elliptic Bitcoin dataset \citep{weber2019anti}, a widely-adopted benchmark consisting of 203,769 transactions and 234,355 payment flows labeled as licit, illicit, or unknown. Our temporal evaluation protocol follows realistic deployment scenarios: training on time steps 1-30, validating on steps 31-34, and testing on future steps 35-49 to assess generalization under concept drift. The experimental design includes comprehensive ablation studies to isolate the contributions of HRAPE and SEAL, label efficiency analysis to evaluate semi-supervised learning capabilities, and temporal stability assessments to quantify robustness to evolving fraud patterns.
+
+\subsection*{Contributions}
+This work makes three principal contributions:
+
+\begin{enumerate}
+    \item \textbf{Temporal-aware intrinsic explainability architecture}: We propose RTXGNN, the first self-explainable GNN framework that jointly models temporal dynamics and generates multi-granularity explanations (node, edge, feature, temporal) during inference without post-hoc computation. HRAPE captures multi-scale temporal patterns—recency, periodicity, and velocity—that static models miss, while SEAL intrinsically generates sparse interpretable masks during message-passing, achieving sub-millisecond explanation generation suitable for real-time deployment.
+
+    \item \textbf{Empirical validation of explainability-as-regularization}: We demonstrate that sparsity-regularized intrinsic explainability improves rather than degrades detection performance, with SEAL's sparse masking contributing +6.37pp F1 and HRAPE contributing +2.51pp F1. This challenges the conventional explainability-performance trade-off, showing that well-designed interpretability constraints act as domain-informed feature selection that reduces overfitting.
+
+    \item \textbf{Regulatory-aligned evaluation protocols}: We establish evaluation protocols addressing gaps identified in recent surveys \citep{yuan2023explainability_survey, cherif2024survey, nandan2025graphxai}: temporal stability analysis across 15 future time steps; label efficiency assessment showing 76\% performance retention with only 10\% labeled data; explanation fidelity metrics that avoid problematic ground-truth comparisons \citep{faber2021groundtruth}; and case studies demonstrating explanations actionable under GDPR Article 22 and ECOA \citep{ecoa1974} requirements.
+\end{enumerate}
+
+The remainder of this paper is organized as follows. Section \ref{sec:related} reviews related work on GNN-based fraud detection, temporal graph learning, and explainable AI in financial contexts. Section \ref{sec:methodology} formalizes the problem and presents the RTXGNN architecture in detail. Section \ref{sec:experiments} describes the experimental setup, evaluation metrics, and comprehensive results including ablation studies, label efficiency analysis, temporal stability assessment, and interpretable case studies. Section \ref{sec:discussion} discusses implications for regulatory compliance, deployment considerations, and limitations. Section \ref{sec:conclusions} concludes with directions for future research.
