@@ -4,7 +4,8 @@ export PATH=$HOME/.local/bin:$PATH
 HERE=$(cd $(dirname "$0") && pwd)
 S=$1; N=${2:-3}
 while true; do
-  if ! timeout 90 colab status -s $S 2>&1 | grep -qi "gpu\|running\|ready\|T4"; then
+  # the server-side session list is authoritative (status may show cached metadata)
+  if ! timeout 90 colab sessions 2>&1 | grep -q "\[$S\]"; then
     echo "$(date +%T) session $S lost"
     for p in $(ps -eo pid,args | grep "[c]olab_sync.sh" | awk '{print $1}'); do kill $p; done
     S=gpu$N; N=$((N+1))

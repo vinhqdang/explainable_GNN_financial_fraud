@@ -6,7 +6,7 @@ set -e
 export PATH=$HOME/.local/bin:$PATH
 S=$1; HERE=$(cd $(dirname "$0") && pwd)
 timeout 1200 colab exec -s $S -f $HERE/colab_remote_setup.py --timeout 1180
-for f in label_efficiency.jsonl retraining.jsonl elliptic_ablation2.jsonl; do
+for f in label_efficiency.jsonl retraining.jsonl elliptic_ablation2.jsonl elliptic_evo.jsonl elliptic_raw.jsonl; do
   [ -s $HERE/../results/$f ] && timeout 120 colab upload -s $S $HERE/../results/$f /content/rtx/results/$f
 done
 timeout 120 colab exec -s $S -f $HERE/colab_remote_launch.py --timeout 100

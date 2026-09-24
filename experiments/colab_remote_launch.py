@@ -7,6 +7,7 @@ V = ("rtxgnn:full,rtxgnn:time2vec_abs,rtxgnn:no_suf,rtxgnn:no_nec,rtxgnn:no_curr
      "rtxgnn:dim32,rtxgnn:dim128,rtxgnn:layers1")
 jobs = {
     "p1": f"{env} python run_label_efficiency.py --threads 1",
+    "p3": f"{env} python run_elliptic.py --models evolvegcn --seeds 0-9 --tag evo --threads 1; {env} python run_elliptic.py --models mlp,gcn,sage,gat,sefraud,rtxgnn --seeds 0 --tag raw --raw --threads 1",
     "p2": f"{env} python run_retraining.py --threads 1; {env} python run_elliptic.py --models {V} --seeds 0-2 --tag ablation2 --threads 1",
 }
 for k, c in jobs.items():
