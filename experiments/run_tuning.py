@@ -5,7 +5,7 @@ search space (configuration 0 is the default used in the main comparison).
 Every configuration is trained with seeds 0-2, and configurations are ranked by
 their mean *validation* AP (steps 31-34). Test metrics are recorded but never
 used for selection. ``--final`` re-runs the selected configuration with seeds
-0-9 and writes results/elliptic_tuned.jsonl.
+0-9 and writes results/tuned_<model>.jsonl.
 
 Example:
     python experiments/run_tuning.py --models rtxgnn,xgb,gas --n 20
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     dtr, dev = to_dev(dtr), to_dev(dev)
     for name in a.models.split(","):
         if a.final:
-            out = os.path.join(RESULTS, "elliptic_tuned.jsonl")
+            out = os.path.join(RESULTS, f"tuned_{name}.jsonl")
             sel = select(name)
             if sel is None:
                 print("no complete tuning results for", name)
