@@ -18,7 +18,7 @@ while true; do
     touch /tmp/logs/colab_sync.last
     if timeout 600 colab new -s $S --gpu T4 < /dev/null; then
       for i in 1 2 3; do
-        $HERE/colab_resume.sh $S && { echo "$(date +%T) resumed on $S"; break; }
+        $HERE/${RESUME:-colab_resume.sh} $S && { echo "$(date +%T) resumed on $S"; break; }
         sleep 30
       done
     fi
