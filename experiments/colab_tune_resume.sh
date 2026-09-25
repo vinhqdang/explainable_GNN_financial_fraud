@@ -14,9 +14,14 @@ for m in $M; do
     [ -s $HERE/../results/colab_live/$f ] && timeout 120 colab upload -s $S $HERE/../results/colab_live/$f /content/rtx/results/$f
   done
 done
-# VM "a" needs the complete records of VM "b" for the final RTXGNN runs (uploaded, not synced back)
-[ $VM = a ] && [ -s $HERE/../results/colab_live/tuning_rtxgnn_b.jsonl ] && \
-  timeout 120 colab upload -s $S $HERE/../results/colab_live/tuning_rtxgnn_b.jsonl /content/rtx/results/tuning_rtxgnn_b.jsonl
+# VM "b" needs the complete records of VM "a" for the final RTXGNN runs (uploaded, not synced back)
+if [ $VM = b ]; then
+  [ -s $HERE/../results/colab_live/tuning_rtxgnn.jsonl ] && \
+    timeout 120 colab upload -s $S $HERE/../results/colab_live/tuning_rtxgnn.jsonl /content/rtx/results/tuning_rtxgnn.jsonl
+  [ -s $HERE/../results/colab_live/tuned_rtxgnn.jsonl ] && \
+    timeout 120 colab upload -s $S $HERE/../results/colab_live/tuned_rtxgnn.jsonl /content/rtx/results/tuned_rtxgnn.jsonl
+  FILES="$FILES tuned_rtxgnn.jsonl"
+fi
 cp $HERE/colab_tune_launch.py /tmp/colab_tune_launch_$VM.py && sed -i "s/^vm = .*/vm = \"$VM\"/" /tmp/colab_tune_launch_$VM.py
 timeout 120 colab exec -s $S -f /tmp/colab_tune_launch_$VM.py --timeout 100
 DST=$HERE/../results/colab_live COLAB_SESSION=$S SYNC_EVERY=60 FILES="$FILES" LOGS="t1 t2" LOGPREFIX=${VM}_ nohup $HERE/colab_sync.sh $VM > /tmp/logs/colab_sync_$VM.log 2>&1 &
