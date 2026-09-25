@@ -1,6 +1,8 @@
 """Training / evaluation utilities shared by all experiments."""
 import copy
+import inspect
 import time
+from functools import partial
 import numpy as np
 import torch
 from sklearn.metrics import (f1_score, precision_score, recall_score, roc_auc_score,
@@ -42,21 +44,19 @@ def build(name, in_dim, **kw):
     if name.startswith("rtxgnn"):
         return RTXGNN(in_dim, dim=dim, **kw)
     table = {
-        "mlp": lambda: B.MLP(in_dim, dim),
-        "gcn": lambda: B.PygGNN("gcn", in_dim, dim),
-        "sage": lambda: B.PygGNN("sage", in_dim, dim),
-        "gat": lambda: B.PygGNN("gat", in_dim, dim),
-        "evolvegcn": lambda: B.EvolveGCN(in_dim, dim),
-        "tgat": lambda: B.TGAT(in_dim, dim),
-        "tgn": lambda: B.TGN(in_dim, dim),
-        "apan": lambda: B.APAN(in_dim, dim),
-        "caregnn": lambda: B.CAREGNN(in_dim, dim),
-        "pcgnn": lambda: B.PCGNN(in_dim, dim),
-        "gas": lambda: B.GAS(in_dim, dim),
-        "fraudre": lambda: B.FRAUDRE(in_dim, dim),
-        "sefraud": lambda: B.SEFraud(in_dim, dim),
+        "mlp": lambda: B.MLP, "gcn": lambda: partial(B.PygGNN, "gcn"), "sage": lambda: partial(B.PygGNN, "sage"),
+        "gat": lambda: partial(B.PygGNN, "gat"), "evolvegcn": lambda: B.EvolveGCN, "tgat": lambda: B.TGAT,
+        "tgn": lambda: B.TGN, "apan": lambda: B.APAN, "caregnn": lambda: B.CAREGNN, "pcgnn": lambda: B.PCGNN,
+        "gas": lambda: B.GAS, "fraudre": lambda: B.FRAUDRE, "sefraud": lambda: B.SEFraud,
     }
-    return table[name]()
+    cls = table[name]()
+    # optional hyperparameters (dropout, number of layers) used by the tuning study
+    target = cls.func if isinstance(cls, partial) else cls
+    allowed = inspect.signature(target.__init__).parameters
+    unknown = set(kw) - set(allowed)
+    if unknown:
+        raise ValueError(f"{name} does not accept {sorted(unknown)}")
+    return cls(in_dim, dim, **kw)
 
 
 def train_model(model, data, deval, epochs=300, patience=40, lr=5e-3, wd=1e-5,
