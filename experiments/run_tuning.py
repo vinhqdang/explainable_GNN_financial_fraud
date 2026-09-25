@@ -86,8 +86,11 @@ def select(name):
     rows = []
     for p in [os.path.join(RESULTS, f"tuning_{name}.jsonl")] + sorted(glob.glob(os.path.join(RESULTS, f"tuning_{name}_*.jsonl"))):
         rows += load(p)
-    by = {}
-    for r in rows:
+    by, seen = {}, set()
+    for r in rows:  # a (configuration, seed) pair may have been run on two machines: keep the first record
+        if (r["cid"], r["seed"]) in seen:
+            continue
+        seen.add((r["cid"], r["seed"]))
         by.setdefault(r["cid"], []).append(r)
     full = {c: v for c, v in by.items() if len(v) >= 3}
     if not full:
