@@ -14,5 +14,5 @@ for m in $M; do
   done
 done
 timeout 120 colab exec -s $S -f $HERE/colab_tune_launch.py --timeout 100
-COLAB_SESSION=$S SYNC_EVERY=60 FILES="$FILES" LOGS="t1 t2" nohup $HERE/colab_sync.sh > /tmp/logs/colab_sync.log 2>&1 &
+DST=$HERE/../results/colab_live COLAB_SESSION=$S SYNC_EVERY=60 FILES="$FILES" LOGS="t1 t2" nohup $HERE/colab_sync.sh > /tmp/logs/colab_sync.log 2>&1 &
 echo resumed on $S

@@ -3,7 +3,7 @@
 # nothing but the run in progress is lost if the VM dies.
 export PATH=$HOME/.local/bin:$PATH
 S=${COLAB_SESSION:-gpu1}
-DST=$(dirname "$0")/../results
+DST=${DST:-$(dirname "$0")/../results}
 while true; do
   for f in ${FILES:-label_efficiency.jsonl retraining.jsonl elliptic_ablation2.jsonl elliptic_evo.jsonl elliptic_raw.jsonl elliptic_main_gpu.jsonl tfinance.jsonl}; do
     timeout 120 colab download -s $S /content/rtx/results/$f $DST/$f.colab.tmp >/dev/null 2>&1 && \
