@@ -168,7 +168,11 @@ the final models, neither RTXGNN nor any baseline.
   reaches 0.440 under a different protocol.
 - **TGN and APAN:** on Elliptic the memory and the mailbox are always empty before a node's
   time step (see Appendix B).
-- **No model was tuned per model.** Hidden size 64, 2 layers and dropout 0.2 are used everywhere.
+- **Tuning.** The main comparison uses one configuration for all models (hidden size 64, 2 layers, dropout 0.2).
+  An equal-budget tuning study (`experiments/run_tuning.py`; records `results/tuning_*.jsonl`, final 10-seed runs
+  `results/tuned_*.jsonl`; table `tables/tuned.tex`) gives RTXGNN and ten baselines 20 configurations each,
+  selected on validation AP. Tuned RTXGNN reaches F1 0.703 (default 0.700). Tuned XGBoost reaches 0.789 and tuned
+  RF 0.769; tuned GNNs are between 0.671 and 0.711, with no significant F1 difference to RTXGNN after Holm correction.
 
 ### 3.10 Reproducibility caveats
 

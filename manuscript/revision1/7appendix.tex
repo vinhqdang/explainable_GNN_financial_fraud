@@ -30,6 +30,21 @@ All baselines use the shared protocol of Section~\ref{subsec:protocol} (hidden s
 \item \textbf{SEFraud.} A feature-mask MLP and an edge-mask MLP gate a two-layer graph transformer, as in \citet{li2024sefraud} but on a single node and edge type. Its loss adds to the classification loss a triplet loss (margin 1, weight 0.5) with anchor the embedding of the unmasked graph, positive the embedding of the masked graph and negative the embedding of the complementary graph, plus an $L_1$ mask penalty of weight 0.01.
 \end{itemize}
 
+\section{Search spaces of the tuning study}
+\label{app:tuning}
+
+Every model receives 20 configurations: its default configuration (Section~\ref{subsec:protocol}) and 19 configurations drawn uniformly at random from the grid below (\texttt{experiments/run\_tuning.py}). Each configuration is trained with seeds 0--2 and selected by its mean validation AP.
+
+\begin{itemize}
+\item \textbf{RTXGNN:} hidden size $\{64, 128\}$, SEAL layers $\{2, 3\}$, dropout $\{0, 0.2, 0.3, 0.5\}$, learning rate $\{1, 2, 5, 10\}\cdot10^{-3}$, weight decay $\{0, 10^{-5}, 10^{-4}, 10^{-3}\}$, $\lambda_{suf}, \lambda_{nec} \in \{0.25, 0.5, 1\}$, $\lambda_{sp}\in\{0.01, 0.05\}$, $k_f\in\{10, 20\}$.
+\item \textbf{GCN, GraphSAGE, GAT:} hidden size $\{32, 64, 128\}$, layers $\{2, 3\}$, dropout, learning rate and weight decay as for RTXGNN.
+\item \textbf{TGAT, TGN, GAS, FRAUDRE, SEFraud:} hidden size $\{32, 64, 128\}$, dropout, learning rate and weight decay as for RTXGNN.
+\item \textbf{XGBoost:} trees $\{300, 600, 1000\}$, depth $\{4, 6, 8\}$, learning rate $\{0.03, 0.05, 0.1\}$, row subsampling $\{0.6, 0.8, 1\}$, column subsampling $\{0.5, 0.8, 1\}$, minimum child weight $\{1, 5, 10\}$.
+\item \textbf{Random forest:} trees $\{100, 300, 500\}$, features per split $\{20, 50, 100, \sqrt{d}\}$, minimum leaf size $\{1, 2, 5\}$, class weights $\{$none, balanced per bootstrap sample$\}$.
+\end{itemize}
+
+The selected configuration of RTXGNN has three SEAL layers, hidden size 64, dropout 0.2, learning rate $2\cdot10^{-3}$, no weight decay, $\lambda_{suf}=0.5$, $\lambda_{nec}=1$, $\lambda_{sp}=0.01$ and $k_f=10$.
+
 \section{Effect of feature preprocessing}
 \label{app:preprocessing}
 

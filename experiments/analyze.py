@@ -581,9 +581,16 @@ def tuned_table():
         k = m.replace("-", "")
         macro(f"tun{k}Fone", f"{mean(R[m], 'f1'):.3f}"); macro(f"tun{k}AP", f"{mean(R[m], 'ap'):.3f}")
         macro(f"tun{k}FoneSd", f"{np.std([v['f1'] for v in R[m].values()], ddof=1):.3f}")
+        if m != "rtxgnn":
+            macro(f"tundelta{k}", f"{mean(ref, 'f1') - mean(R[m], 'f1'):+.3f}")
+        if m in default:
+            macro(f"tungain{k}", f"{mean(R[m], 'f1') - mean(default[m], 'f1'):+.3f}")
     lines += ["\\bottomrule", "\\end{tabular}"]
     open(os.path.join(OUT, "tuned.tex"), "w").write("\n".join(lines) + "\n")
     macro("tunNmodels", str(len(R)))
+    gn = [m for m in R if m not in ("xgb", "rf", "rtxgnn")]
+    macro("tunGnnMin", f"{min(mean(R[m], 'f1') for m in gn):.3f}"); macro("tunGnnMax", f"{max(mean(R[m], 'f1') for m in gn):.3f}")
+    macro("tunpFOneMinGnn", f"{min(pv['f1'][m] for m in gn):.2f}")
 
 
 def ring_macros():

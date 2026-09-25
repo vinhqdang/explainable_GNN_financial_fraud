@@ -22,6 +22,19 @@ Two feature-only models remain strong competitors on Elliptic's engineered featu
 EvolveGCN-O is the weakest graph model (\evolvegcnFone). Its recurrent weight evolution has to be carried from the training period through all test snapshots without supervision. Because no transaction appears in more than one snapshot, the model cannot exploit the node-level continuity for which it was designed. The continuous-time models TGN and TGAT perform similarly to static GNNs, for the reasons discussed in Section~\ref{sec:related}.
 
 
+\subsection{Robustness to hyperparameter tuning}
+\label{subsec:tuning}
+
+\begin{table}[!t]
+\centering
+\caption{Equal-budget tuning study on Elliptic. Every model uses the configuration with the highest mean validation AP among 20 configurations (seeds 0--2) and is then evaluated with 10 seeds (mean $\pm$ standard deviation). F1 (default): the main comparison (Table~\ref{tab:main}); $\Delta$F1: change due to tuning. $^{\dagger}$/$^{\ddagger}$: tuned RTXGNN significantly better/worse (two-sided Wilcoxon signed-rank test, Holm-corrected over the 10 comparisons, $\alpha=0.05$).}
+\label{tab:tuned}
+\footnotesize
+\begin{adjustbox}{max width=\textwidth}\input{tables/tuned.tex}\end{adjustbox}
+\end{table}
+
+The main comparison uses one configuration for all neural models. Table~\ref{tab:tuned} shows what happens when every model receives the same tuning budget, with selection on the validation steps only. Tuning improves most baselines, most strongly GAT (\tungaingat{} F1), the random forest (\tungainrf) and SEFraud (\tungainsefraud). The configuration selected for RTXGNN reaches F1 \tunrtxgnnFone\,$\pm$\,\tunrtxgnnFoneSd, essentially its default score (\tungainrtxgnn). The overall picture does not change. After Holm correction, XGBoost (F1 \tunxgbFone) and the random forest (\tunrfFone) remain significantly more accurate than RTXGNN. The tuned GNNs reach F1 between \tunGnnMin{} and \tunGnnMax, and none of their F1 differences to RTXGNN is significant. RTXGNN is on average ahead of the tuned SEFraud (\tundeltasefraud) and FRAUDRE (\tundeltafraudre), and within 0.01 F1 of the other GNNs. On AP, RTXGNN is significantly better than the tuned GCN and not significantly different from the other GNNs. The conclusions of Section~\ref{subsec:main} therefore do not depend on the choice of hyperparameters.
+
 \subsection{What the scores mean operationally}
 \label{subsec:operational}
 
@@ -52,7 +65,7 @@ Table~\ref{tab:ablation} isolates the components of RTXGNN. The primary study us
 
 \paragraph{Explanation components} Replacing the SEAL masks by plain attention ($\ablnosealDelta$, $p=\ablnosealP$), removing the sparsity term ($\ablnosparsityDelta$, $p=\ablnosparsityP$), or removing both fidelity terms ($\ablnofidelityDelta$, $p=\ablnofidelityP$) does not change detection performance significantly. In the secondary study, removing the sufficiency term alone lowers F1 by \ablGnosufDelta{} ($p=\ablGnosufP$), and removing the necessity term leaves it unchanged. The secondary result is not confirmed by the primary study, in which removing both terms leaves F1 unchanged (\ablnofidelityDelta). The full model is also not more accurate than its variants without masks or without explanation terms. All these differences are within the variation across seeds. The explanation machinery thus comes at no measurable cost in accuracy, but it does not improve accuracy either. What it provides is an explanation with the properties measured in Section~\ref{subsec:explanations}, which the variants without masks or without fidelity terms do not have.
 
-\paragraph{Training choices} Class-balanced cross-entropy is clearly preferable to focal loss (\ablGfocallossDelta{} F1 with focal loss), and the curriculum on the explanation terms tends to help (\ablGnocurriculumDelta{} without it, not significant). The model is also sensitive to its capacity (Table~\ref{tab:sensitivity}). Hidden size 64 with two SEAL layers, the configuration fixed before the experiments, performs best among the tested settings, and a single layer is significantly worse (\sensGlayersOneDelta{} F1).
+\paragraph{Training choices} Class-balanced cross-entropy is clearly preferable to focal loss (\ablGfocallossDelta{} F1 with focal loss), and the curriculum on the explanation terms tends to help (\ablGnocurriculumDelta{} without it, not significant). The model is also sensitive to its capacity (Table~\ref{tab:sensitivity}). Hidden size 64 with two SEAL layers, the configuration fixed before the experiments, performs best among the tested settings, and a single layer is significantly worse (\sensGlayersOneDelta{} F1). The tuning study (Section~\ref{subsec:tuning}), which also tries three layers, selects three layers on the validation steps, but this does not change the test F1.
 
 \subsection{Mask sparsity versus conventional regularisation}
 \label{subsec:regularisation}
