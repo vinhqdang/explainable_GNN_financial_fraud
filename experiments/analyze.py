@@ -533,6 +533,59 @@ def validation_check():
                 macro(f"{prefix}Wins{name}", f"{wins} of {len(common)}")
 
 
+TUNED = ["xgb", "rf", "gcn", "sage", "gat", "tgat", "tgn", "gas", "fraudre", "sefraud", "rtxgnn"]
+
+
+def tuned_table():
+    """Equal-budget tuning study: each model with the configuration of highest
+    mean validation AP (seeds 0-2), re-run with seeds 0-9."""
+    R, cfg = {}, {}
+    for m in TUNED:
+        rows = load(f"tuned_{m}.jsonl")
+        if rows:
+            R[m] = {r["seed"]: r["test"] for r in rows}
+            cfg[m] = rows[0]["cid"]
+    if "rtxgnn" not in R:
+        return
+    default = by_model(main_rows())
+    ref = R["rtxgnn"]
+    pv = {}
+    for met in ("f1", "ap"):
+        raw = {}
+        for m in R:
+            if m != "rtxgnn":
+                x, y = paired(ref, R[m], met)
+                if len(x) >= 5 and not np.allclose(x - y, 0):
+                    raw[m] = wilcoxon(x, y).pvalue
+        pv[met] = holm(raw)
+        for m, p in pv[met].items():
+            macro(f"tunp{met.upper()}{m}", f"{p:.3f}")
+    mean = lambda d, met: np.mean([v[met] for v in d.values()])
+    best = {met: max(mean(R[m], met) for m in R) for met in ("f1", "precision", "recall", "ap")}
+    lines = ["\\begin{tabular}{lcccccc}", "\\toprule",
+             "Model & F1 (default) & F1 & Precision & Recall & AP & $\\Delta$F1\\\\", "\\midrule"]
+    for m in TUNED:
+        if m not in R:
+            continue
+        cells = [f"{mean(default[m], 'f1'):.3f}" if m in default else "--"]
+        for met in ("f1", "precision", "recall", "ap"):
+            vals = [v[met] for v in R[m].values()]
+            c = ms(vals)
+            if abs(np.mean(vals) - best[met]) < 1e-9:
+                c = f"\\textbf{{{c}}}"
+            if m in pv.get(met, {}) and pv[met][m] < 0.05:
+                c += "$^{\\dagger}$" if mean(ref, met) > np.mean(vals) else "$^{\\ddagger}$"
+            cells.append(c)
+        cells.append(f"{mean(R[m], 'f1') - mean(default[m], 'f1'):+.3f}" if m in default else "--")
+        lines.append(f"{NAMES[m]} & " + " & ".join(cells) + "\\\\")
+        k = m.replace("-", "")
+        macro(f"tun{k}Fone", f"{mean(R[m], 'f1'):.3f}"); macro(f"tun{k}AP", f"{mean(R[m], 'ap'):.3f}")
+        macro(f"tun{k}FoneSd", f"{np.std([v['f1'] for v in R[m].values()], ddof=1):.3f}")
+    lines += ["\\bottomrule", "\\end{tabular}"]
+    open(os.path.join(OUT, "tuned.tex"), "w").write("\n".join(lines) + "\n")
+    macro("tunNmodels", str(len(R)))
+
+
 def ring_macros():
     p = os.path.join(RESULTS, "fraud_ring.json")
     if os.path.exists(p):
@@ -554,7 +607,7 @@ if __name__ == "__main__":
     variant_table(REG, "regularisation.tex", "reg")
     variant_table(SENS, "sensitivity.tex", "sens")
     for f in (operational, temporal_table, label_eff_table, explanation_table, synthetic_table, tfinance_table,
-              latency_table, preprocessing_table, validation_check, ring_macros):
+              latency_table, preprocessing_table, validation_check, tuned_table, ring_macros):
         try:
             f()
         except Exception as e:

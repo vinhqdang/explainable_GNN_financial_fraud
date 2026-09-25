@@ -10,7 +10,10 @@ env = "RTX_DATA=/content/data RTX_DEVICE=cuda PYTHONPATH=.. MALLOC_MMAP_THRESHOL
 G = {"a": "gas,sage,gcn,tgn,fraudre", "b": "gat,sefraud,tgat"}[vm]
 R = {"a": "--cids 0-9", "b": "--cids 10-19 --tag _b"}[vm]
 jobs = {
-    "t1": f"{env} python run_tuning.py --models rtxgnn --n 20 {R} --threads 1",
+    # VM "a" also runs the final 10-seed RTXGNN runs once the records of VM "b" are complete
+    "t1": f"{env} python run_tuning.py --models rtxgnn --n 20 {R} --threads 1"
+          + (f"; test $(cat ../results/tuning_rtxgnn_b.jsonl | wc -l) -ge 30 && "
+             f"{env} python run_tuning.py --models rtxgnn --final --threads 1" if vm == "a" else ""),
     "t2": f"{env} python run_tuning.py --models {G} --n 20 --threads 1; "
           f"{env} python run_tuning.py --models {G} --final --threads 1",
 }
