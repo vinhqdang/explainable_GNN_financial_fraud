@@ -10,7 +10,7 @@ FILES=""
 for m in $M; do
   for f in tuning_$m.jsonl tuned_$m.jsonl; do
     FILES="$FILES $f"
-    [ -s $HERE/../results/$f ] && timeout 120 colab upload -s $S $HERE/../results/$f /content/rtx/results/$f
+    [ -s $HERE/../results/colab_live/$f ] && timeout 120 colab upload -s $S $HERE/../results/colab_live/$f /content/rtx/results/$f
   done
 done
 timeout 120 colab exec -s $S -f $HERE/colab_tune_launch.py --timeout 100
