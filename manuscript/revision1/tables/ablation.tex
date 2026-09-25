@@ -3,19 +3,19 @@
 Variant & seeds & F1 & AP & $\Delta$F1 (paired $p$)\\
 \midrule
 \multicolumn{5}{l}{\textit{Primary study (5 seeds)}}\\
-RTXGNN (full) & 5 & 0.696\,$\pm$\,0.048 & 0.769\,$\pm$\,0.009 & --\\
-without HRAPE & 5 & 0.666\,$\pm$\,0.035 & 0.769\,$\pm$\,0.018 & -0.030 (0.26)\\
-HRAPE $\rightarrow$ Time2Vec (gaps) & 5 & 0.629\,$\pm$\,0.028 & 0.766\,$\pm$\,0.010 & -0.067 (0.04)\\
-HRAPE + absolute-time encoding & 5 & 0.647\,$\pm$\,0.080 & 0.773\,$\pm$\,0.009 & -0.049 (0.33)\\
-without SEAL masks (plain attention) & 5 & 0.704\,$\pm$\,0.028 & 0.777\,$\pm$\,0.013 & +0.008 (0.75)\\
-without $\mathcal{L}_{sp}$ & 5 & 0.718\,$\pm$\,0.018 & 0.776\,$\pm$\,0.015 & +0.021 (0.30)\\
-without $\mathcal{L}_{suf}$ and $\mathcal{L}_{nec}$ & 5 & 0.708\,$\pm$\,0.050 & 0.773\,$\pm$\,0.007 & +0.012 (0.72)\\
+RTXGNN (full) & 5 & 0.883\,$\pm$\,0.007 & 0.937\,$\pm$\,0.009 & --\\
+without HRAPE & 5 & 0.666\,$\pm$\,0.035 & 0.769\,$\pm$\,0.018 & -0.217 (0.00)\\
+HRAPE $\rightarrow$ Time2Vec (gaps) & 5 & 0.880\,$\pm$\,0.006 & 0.936\,$\pm$\,0.009 & -0.004 (0.53)\\
+HRAPE + absolute-time encoding & 5 & 0.879\,$\pm$\,0.004 & 0.932\,$\pm$\,0.006 & -0.004 (0.29)\\
+without SEAL masks (plain attention) & 5 & 0.704\,$\pm$\,0.028 & 0.777\,$\pm$\,0.013 & -0.179 (0.00)\\
+without $\mathcal{L}_{sp}$ & 5 & 0.717\,$\pm$\,0.016 & 0.775\,$\pm$\,0.015 & -0.166 (0.00)\\
+without $\mathcal{L}_{suf}$ and $\mathcal{L}_{nec}$ & 5 & 0.702\,$\pm$\,0.043 & 0.766\,$\pm$\,0.006 & -0.181 (0.00)\\
 \midrule\multicolumn{5}{l}{\textit{Secondary study (3 seeds, trained on GPU; own reference)}}\\
-RTXGNN (full) & 3 & 0.724\,$\pm$\,0.031 & 0.771\,$\pm$\,0.012 & --\\
-Time2Vec on absolute time & 3 & 0.685\,$\pm$\,0.033 & 0.770\,$\pm$\,0.014 & -0.040 (0.02)\\
-without $\mathcal{L}_{suf}$ & 3 & 0.658\,$\pm$\,0.015 & 0.765\,$\pm$\,0.006 & -0.067 (0.06)\\
-without $\mathcal{L}_{nec}$ & 3 & 0.728\,$\pm$\,0.049 & 0.780\,$\pm$\,0.003 & +0.003 (0.89)\\
-without curriculum & 3 & 0.666\,$\pm$\,0.063 & 0.755\,$\pm$\,0.020 & -0.059 (0.39)\\
-focal loss instead of balanced BCE & 3 & 0.599\,$\pm$\,0.051 & 0.742\,$\pm$\,0.010 & -0.125 (0.08)\\
+RTXGNN (full) & 3 & 0.882\,$\pm$\,0.003 & 0.934\,$\pm$\,0.010 & --\\
+Time2Vec on absolute time & 3 & 0.882\,$\pm$\,0.006 & 0.935\,$\pm$\,0.003 & -0.001 (0.89)\\
+without $\mathcal{L}_{suf}$ & 3 & 0.658\,$\pm$\,0.015 & 0.765\,$\pm$\,0.006 & -0.224 (0.00)\\
+without $\mathcal{L}_{nec}$ & 3 & 0.717\,$\pm$\,0.036 & 0.769\,$\pm$\,0.018 & -0.166 (0.02)\\
+without curriculum & 3 & 0.666\,$\pm$\,0.063 & 0.755\,$\pm$\,0.020 & -0.216 (0.03)\\
+focal loss instead of balanced BCE & 3 & 0.875\,$\pm$\,0.004 & 0.934\,$\pm$\,0.009 & -0.007 (0.21)\\
 \bottomrule
 \end{tabular}
