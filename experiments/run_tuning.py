@@ -12,6 +12,7 @@ Example:
     python experiments/run_tuning.py --models rtxgnn,xgb,gas --final
 """
 import argparse
+import glob
 import json
 import os
 import time
@@ -82,7 +83,9 @@ def load(path):
 
 def select(name):
     """Configuration with the highest mean validation AP over its tuning seeds."""
-    rows = load(os.path.join(RESULTS, f"tuning_{name}.jsonl"))
+    rows = []
+    for p in [os.path.join(RESULTS, f"tuning_{name}.jsonl")] + sorted(glob.glob(os.path.join(RESULTS, f"tuning_{name}_*.jsonl"))):
+        rows += load(p)
     by = {}
     for r in rows:
         by.setdefault(r["cid"], []).append(r)
@@ -99,6 +102,8 @@ if __name__ == "__main__":
     ap.add_argument("--n", type=int, default=20, help="configurations per model (including the default)")
     ap.add_argument("--seeds", default="0-2")
     ap.add_argument("--final", action="store_true")
+    ap.add_argument("--cids", default=None, help="subset of configurations, e.g. 10-19 (to split work across machines)")
+    ap.add_argument("--tag", default="", help="suffix of the tuning record file, e.g. _b")
     ap.add_argument("--threads", type=int, default=4)
     a = ap.parse_args()
     torch.set_num_threads(a.threads)
@@ -121,9 +126,9 @@ if __name__ == "__main__":
                 append_jsonl(out, row)
                 print(f"final {name} cid {cid} seed {seed}: val AP {row['val']['ap']:.4f}", flush=True)
             continue
-        out = os.path.join(RESULTS, f"tuning_{name}.jsonl")
+        out = os.path.join(RESULTS, f"tuning_{name}{a.tag}.jsonl")
         done = {(r["cid"], r["seed"]) for r in load(out)}
-        for cid in range(a.n):
+        for cid in (parse_seeds(a.cids) if a.cids else range(a.n)):
             cfg = sample(name, cid)
             for seed in parse_seeds(a.seeds):
                 if (cid, seed) in done:

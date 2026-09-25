@@ -1,12 +1,16 @@
-"""Executed on the Colab VM: start the tuning queues (resumable; finished
-configurations are skipped). Chain 1 tunes RTXGNN, chain 2 the graph baselines;
-each chain then re-runs its selected configurations with 10 seeds."""
+"""Executed on the Colab VMs: start the tuning queues (resumable; finished
+configurations are skipped). The work is split between two VMs: VM "a" tunes
+RTXGNN configurations 0-9 and five graph baselines, VM "b" RTXGNN
+configurations 10-19 and the other three baselines. The final 10-seed runs of
+RTXGNN are started separately once both halves are complete."""
 import subprocess
+import sys
+vm = sys.argv[1] if len(sys.argv) > 1 else "a"
 env = "RTX_DATA=/content/data RTX_DEVICE=cuda PYTHONPATH=.. MALLOC_MMAP_THRESHOLD_=65536"
-G = "gas,sage,gcn,tgn,fraudre,tgat,gat,sefraud"
+G = {"a": "gas,sage,gcn,tgn,fraudre", "b": "gat,sefraud,tgat"}[vm]
+R = {"a": "--cids 0-9", "b": "--cids 10-19 --tag _b"}[vm]
 jobs = {
-    "t1": f"{env} python run_tuning.py --models rtxgnn --n 20 --threads 1; "
-          f"{env} python run_tuning.py --models rtxgnn --final --threads 1",
+    "t1": f"{env} python run_tuning.py --models rtxgnn --n 20 {R} --threads 1",
     "t2": f"{env} python run_tuning.py --models {G} --n 20 --threads 1; "
           f"{env} python run_tuning.py --models {G} --final --threads 1",
 }
